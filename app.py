@@ -104,6 +104,32 @@ def login_required(view):
     return wrapped
 
 
+MAINTENANCE_MODE = os.environ.get("MAINTENANCE_MODE", "1").strip().lower() in {"1", "true", "yes", "on"}
+
+
+@app.before_request
+def maintenance_gate():
+    """Quando activo, o site público fica offline (página de manutenção)."""
+    if not MAINTENANCE_MODE:
+        return None
+    # Permitir estáticos e health simples
+    if request.path.startswith("/static"):
+        return None
+    html = """<!DOCTYPE html>
+<html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>SKYTICKETservice — Em manutenção</title>
+<style>
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+font-family:system-ui,sans-serif;background:#5c0a2c;color:#fff;text-align:center;padding:2rem}
+card{max-width:28rem}h1{font-size:1.6rem;margin:0 0 .75rem}p{opacity:.9;line-height:1.5}
+</style></head><body><div>
+<h1>SKYTICKETservice</h1>
+<p>O site está temporariamente desligado para melhorias.<br>Voltamos em breve.</p>
+</div></body></html>"""
+    return app.response_class(html, status=503, mimetype="text/html")
+
+
 @app.before_request
 def load_user():
     g.user = None

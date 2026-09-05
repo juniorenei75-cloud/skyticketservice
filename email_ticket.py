@@ -1527,8 +1527,8 @@ def _email_brand_header_html(subtitle: str = "Agência de viagens") -> str:
     logo = logo_email_data_uri()
     if logo:
         brand_cell = (
-            f'<img src="{logo}" alt="SKYTICKETservice" width="96" height="54" '
-            f'style="display:block;border:0;outline:none;height:auto;max-width:96px">'
+            f'<img src="{logo}" alt="SKYTICKETservice" width="110" height="62" '
+            f'style="display:block;border:0;outline:none;height:auto;max-width:110px;background:#ffffff;padding:4px;border-radius:4px">'
         )
     else:
         brand_cell = (
@@ -2170,17 +2170,27 @@ def save_eticket_pdf(codigo: str, pdf_bytes: bytes) -> Path:
 
 
 def _slim_html_for_email(html: str) -> str:
-    """Remove imagens data-URI enormes (logo) para caber no limite do GmailApp."""
+    """Remove só data-URIs enormes; mantém o logo pequeno do email."""
     if not html:
         return html
-    # Remove <img ... src="data:..."> blocks
+
+    def _replace_img(match: re.Match) -> str:
+        tag = match.group(0)
+        # Manter imagens pequenas (logo-email ~<25KB base64 ~33KB in attr)
+        m = re.search(r'src=["\'](data:image/[^"\']+)["\']', tag, flags=re.I)
+        if m and len(m.group(1)) <= 35_000:
+            return tag
+        return (
+            '<div style="font-weight:800;color:#ffffff;letter-spacing:.08em;'
+            'font-family:Georgia,serif">SKYTICKETservice</div>'
+        )
+
     slim = re.sub(
         r'<img\b[^>]*src=["\']data:image/[^"\']+["\'][^>]*/?>',
-        '<div style="font-weight:800;color:#5c0a2c;letter-spacing:.08em">SKYTICKETservice</div>',
+        _replace_img,
         html,
         flags=re.I,
     )
-    # Safety truncate if still huge
     if len(slim) > 90_000:
         slim = slim[:90_000] + "<p>... (conteúdo truncado para envio por e-mail)</p>"
     return slim

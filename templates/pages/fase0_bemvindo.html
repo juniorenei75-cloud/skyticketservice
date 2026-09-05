@@ -31,9 +31,17 @@
     </div>
   </div>
 
-  <div class="welcome-cta">
-    <a class="btn btn-gold btn-continue" href="{{ url_for('reserva_pesquisa') }}">
-      {{ _('continue') }}
+  <p class="welcome-choose">O que pretende fazer?</p>
+  <div class="welcome-options">
+    <a class="welcome-option" href="{{ url_for('reserva_pesquisa') }}">
+      <span class="wo-kicker">Book</span>
+      <strong>Bilhetes &amp; viagens</strong>
+      <span>Pesquisar voos e pacotes</span>
+    </a>
+    <a class="welcome-option welcome-option-visa" href="{{ url_for('vistos') }}">
+      <span class="wo-kicker">Visas</span>
+      <strong>Solicitar visto</strong>
+      <span>Vistos para qualquer destino</span>
     </a>
   </div>
 
@@ -224,6 +232,62 @@
     margin: 0;
     font-size: 0.9rem;
     opacity: 0.8;
+  }
+
+  .welcome-choose {
+    margin: 0 0 1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 0.95rem;
+    opacity: 0.95;
+  }
+  .welcome-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    max-width: 560px;
+    margin: 0 auto 1.75rem;
+  }
+  @media (max-width: 560px) {
+    .welcome-options { grid-template-columns: 1fr; }
+  }
+  .welcome-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    text-align: left;
+    padding: 1.15rem 1.2rem;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.28);
+    color: #fff !important;
+    text-decoration: none !important;
+    transition: 0.15s ease;
+    backdrop-filter: blur(8px);
+  }
+  .welcome-option:hover {
+    transform: translateY(-2px);
+    background: rgba(255,255,255,0.2);
+    border-color: #e8d5a3;
+  }
+  .welcome-option-visa {
+    border-color: rgba(184,150,90,0.55);
+    background: rgba(184,150,90,0.18);
+  }
+  .wo-kicker {
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #e8d5a3;
+    font-weight: 800;
+  }
+  .welcome-option strong {
+    font-size: 1.15rem;
+  }
+  .welcome-option span:last-child {
+    font-size: 0.9rem;
+    opacity: 0.88;
   }
   @media (max-width: 480px) {
     .lang-grid { grid-template-columns: 1fr; }

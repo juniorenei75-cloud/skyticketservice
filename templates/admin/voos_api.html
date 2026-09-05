@@ -1,0 +1,110 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Voos em tempo real{% endblock %}
+
+{% block content %}
+<div class="admin-card">
+  <h1>✈ Bilhetes em tempo real (por companhia)</h1>
+  <p class="muted" style="max-width:52rem;line-height:1.5">
+    O SKYTICKETservice é um <strong>sistema real de agência</strong>.
+    As ofertas ao cliente vêm apenas de API (Duffel / Amadeus / Kiwi),
+    do <strong>catálogo da agência</strong> ou de <strong>cotação pela equipa</strong>.
+    <strong>Não se inventam bilhetes.</strong>
+  </p>
+
+  <div class="flash {% if ready %}success{% else %}warning{% endif %}" style="margin:1rem 0">
+    {{ status_msg }}
+  </div>
+
+  <h2 style="font-size:1.1rem;margin-top:1.5rem">1) Duffel (recomendado para começar)</h2>
+  <ol style="line-height:1.55;color:#334;max-width:40rem">
+    <li>Crie conta em <a href="https://app.duffel.com/join" target="_blank" rel="noopener">app.duffel.com/join</a></li>
+    <li>No painel: <strong>Developers</strong> → <strong>Access tokens</strong></li>
+    <li>Copie um token <code>duffel_test_…</code> (testes) ou <code>duffel_live_…</code> (produção)</li>
+    <li>Cole abaixo → <strong>Guardar</strong> → <strong>Testar ligação</strong></li>
+  </ol>
+  <p class="muted" style="line-height:1.45;max-width:40rem">
+    Documentação: <a href="https://duffel.com/docs/api/overview/welcome" target="_blank" rel="noopener">duffel.com/docs</a>.
+    Com token de teste pode pesquisar ofertas reais de sandbox; para vender e emitir, use token <strong>live</strong> e complete a verificação da conta na Duffel.
+  </p>
+
+  <form method="post" class="admin-form" style="margin-top:1.25rem;max-width:36rem">
+    <div class="form-group">
+      <label>Duffel Access Token *</label>
+      <input name="duffel_access_token" type="password" value=""
+             autocomplete="new-password"
+             placeholder="{% if cfg.duffel_access_token %}•••••••• (deixe vazio para manter){% else %}duffel_test_… ou duffel_live_…{% endif %}">
+    </div>
+
+    <div class="form-group" style="background:#f9f0f4;padding:0.85rem 1rem;border-left:3px solid #5c0a2c">
+      <label for="agency_markup_percent"><strong>Margem da agência (%)</strong></label>
+      <input id="agency_markup_percent" name="agency_markup_percent" type="number"
+             min="0" max="100" step="0.1"
+             value="{{ cfg.agency_markup_percent if cfg.agency_markup_percent is not none else 5 }}">
+      <p class="muted" style="margin:0.45rem 0 0;font-size:0.86rem;line-height:1.45">
+        Percentagem adicionada ao preço Duffel. Ex.: bilhete a <strong>100 USD</strong> com
+        <strong>5%</strong> → cliente paga <strong>105 USD</strong>.
+        A margem fica para a SKYTICKETservice.
+      </p>
+    </div>
+
+    <details style="margin:1.25rem 0;border:1px solid #e5e0dc;padding:0.85rem 1rem">
+      <summary style="cursor:pointer;font-weight:700;color:#5c0a2c">Fontes opcionais (Amadeus / Kiwi)</summary>
+      <div class="form-group" style="margin-top:0.85rem">
+        <label>Amadeus API Key (Client ID)</label>
+        <input name="amadeus_client_id" value="{{ cfg.amadeus_client_id or '' }}"
+               autocomplete="off" placeholder="opcional">
+      </div>
+      <div class="form-group">
+        <label>Amadeus API Secret</label>
+        <input name="amadeus_client_secret" type="password" value=""
+               autocomplete="new-password"
+               placeholder="{% if cfg.amadeus_client_secret %}•••• (manter){% else %}opcional{% endif %}">
+      </div>
+      <div class="form-group">
+        <label>Ambiente Amadeus</label>
+        <select name="amadeus_env">
+          <option value="test" {% if cfg.amadeus_env != 'production' %}selected{% endif %}>test</option>
+          <option value="production" {% if cfg.amadeus_env == 'production' %}selected{% endif %}>production</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Kiwi Tequila API Key</label>
+        <input name="tequila_api_key" type="password" value=""
+               autocomplete="new-password"
+               placeholder="{% if cfg.tequila_api_key %}•••• (manter){% else %}opcional{% endif %}">
+      </div>
+    </details>
+
+    <input type="hidden" name="prefer_live_only" value="1">
+    <p class="muted" style="font-size:0.88rem;line-height:1.45">
+      Política: só tarifas reais (API ou catálogo). Tarifas simuladas desactivadas.
+    </p>
+    <div class="form-group">
+      <label>Máx. resultados live</label>
+      <input name="max_live_results" type="number" min="10" max="200"
+             value="{{ cfg.max_live_results or 80 }}">
+    </div>
+    <div class="page-actions" style="border:none;padding-top:0.5rem">
+      <button class="btn btn-primary" type="submit" name="action" value="save">Guardar</button>
+      <button class="btn btn-ghost" type="submit" name="action" value="test">Testar ligação</button>
+    </div>
+  </form>
+
+  {% if test_result %}
+  <div class="flash {{ 'success' if test_ok else 'error' }}" style="margin-top:1rem">
+    {{ test_result }}
+  </div>
+  {% endif %}
+
+  <h2 style="font-size:1.05rem;margin-top:2rem">Fluxo real com Duffel</h2>
+  <ol style="line-height:1.55;color:#334;max-width:40rem">
+    <li>Cliente pesquisa no site → SKYTICKET chama a Duffel</li>
+    <li>Duffel devolve ofertas <strong>por companhia</strong> (preço, voo, horário)</li>
+    <li>Cliente escolhe e completa dados → a agência confirma / emite (ou reserva via Duffel Orders em fase seguinte)</li>
+  </ol>
+
+  <p class="muted" style="margin-top:1.5rem;font-size:0.88rem;line-height:1.45">
+    Variável de ambiente: <code>DUFFEL_ACCESS_TOKEN</code>
+  </p>
+</div>
+{% endblock %}

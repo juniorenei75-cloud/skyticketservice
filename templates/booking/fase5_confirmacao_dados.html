@@ -1,0 +1,103 @@
+{% extends "booking/base_booking.html" %}
+{% block title %}Fase 5 · Confirmação · {{ agencia }}{% endblock %}
+
+{% block phase_body %}
+<div class="phase-card">
+  <h2>📋 Fase 5 — Confirmação de todos os dados</h2>
+  <p class="card-meta" style="margin-top:-.5rem">
+    Reveja destino, datas, passageiros, assentos, preço total e detalhes do bilhete antes de pagar.
+  </p>
+
+  <div class="review-grid">
+    <div class="review-row">
+      <div class="label">Destino</div>
+      <div class="value">{{ booking.destino_cidade }}{% if booking.destino_pais %}, {{ booking.destino_pais }}{% endif %}</div>
+    </div>
+    <div class="review-row">
+      <div class="label">Origem</div>
+      <div class="value">{{ booking.origem_cidade }}, {{ booking.origem_pais }}</div>
+    </div>
+    <div class="review-row">
+      <div class="label">Tipo de bilhete</div>
+      <div class="value">
+        {% if round_trip %}<span class="badge badge-gold">⇄ Ida e volta</span>
+        {% else %}<span class="badge">➡ Só ida</span>{% endif %}
+      </div>
+    </div>
+    <div class="review-row">
+      <div class="label">Datas</div>
+      <div class="value">
+        Ida: {{ booking.data_viagem }}
+        {% if booking.data_regresso %}<br>Volta: {{ booking.data_regresso }}{% endif %}
+      </div>
+    </div>
+    <div class="review-row">
+      <div class="label">Detalhes do bilhete</div>
+      <div class="value">
+        {{ booking.ticket_label }}<br>
+        <span class="card-meta">
+          {{ booking.ticket_companhia }}
+          · Classe {{ booking.classe_nome }}
+          {% if booking.ticket_horario %} · {{ booking.ticket_horario }}{% endif %}
+          {% if booking.ticket_duracao %} · {{ booking.ticket_duracao }}{% endif %}
+        </span>
+        {% if booking.ticket_detalhes %}
+        <br><span class="card-meta">{{ booking.ticket_detalhes }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="review-row">
+      <div class="label">Passageiros</div>
+      <div class="value">
+        {% for p in booking.passageiros %}
+          <strong>{{ loop.index }}. {{ p.nome }}</strong>
+          ({{ p.tipo_pax or 'adulto' }})
+          <br>
+          <span class="card-meta">
+            Nasc. {{ p.nascimento }} · {{ p.nacionalidade }} · Doc. {{ p.documento }}
+            <br>{{ p.telefone }} · {{ p.email }}
+            {% if p.assento %} · Assento ida {{ p.assento }}{% endif %}
+            {% if p.assento_volta %} · Volta {{ p.assento_volta }}{% endif %}
+          </span>
+          <br><br>
+        {% endfor %}
+        {{ booking.n_adultos }} adulto(s)
+        {% if booking.n_criancas %} · {{ booking.n_criancas }} criança(s){% endif %}
+      </div>
+    </div>
+    <div class="review-row">
+      <div class="label">Assentos</div>
+      <div class="value">
+        Ida: {{ booking.assentos|join(', ') if booking.assentos else '—' }}
+        {% if booking.assentos_volta %}
+        <br>Volta: {{ booking.assentos_volta|join(', ') }}
+        {% endif %}
+      </div>
+    </div>
+    <div class="review-row">
+      <div class="label">Preço total</div>
+      <div class="value" style="font-size:1.25rem;color:var(--sky)">
+        {% if cotacao %}
+          A cotar — a agência confirma o valor exacto
+        {% else %}
+          {{ total|money(moeda) }}
+          <div class="card-meta" style="font-weight:500">
+            Adultos {{ booking.n_adultos }} × {{ unit|money(moeda) }}
+            {% if booking.n_criancas %}
+            · Crianças {{ booking.n_criancas }} × {{ (unit * 0.7)|money(moeda) }}
+            {% endif %}
+            {% if trechos > 1 %} · × {{ trechos }} trechos (ida+volta){% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <form method="post">
+    <div class="phase-actions">
+      <a class="btn btn-ghost" href="{{ url_for('reserva_fase', fase=4) }}">← Assentos</a>
+      <button class="btn btn-primary" type="submit">Tudo correcto — ir para Pagamento →</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Voos · {{ agencia }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container">
+    <h1>Bilhetes de avião</h1>
+    <p>Catálogo em destaque + rotas para <strong>qualquer país do mundo</strong> ({{ n_paises }} destinos)</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <div class="form-card" style="max-width:100%;margin-bottom:1rem;background:linear-gradient(135deg,#e0f2fe,#f0fdf4);border-color:#7dd3fc">
+      <strong style="color:var(--navy)">Não está no catálogo?</strong>
+      <p class="card-meta" style="margin:.35rem 0 .75rem">Pedimos cotação para qualquer origem/destino no planeta.</p>
+      <a class="btn btn-primary btn-sm" href="{{ url_for('reserva', tipo='mundo') }}">Viajar para qualquer país →</a>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('destinos') }}">Ver todos os países</a>
+    </div>
+
+    <form method="get" class="form-card" style="max-width:100%;margin-bottom:1.5rem">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="origem">Origem</label>
+          <input list="cidades" id="origem" name="origem" value="{{ origem or '' }}" placeholder="Maputo, Moçambique">
+        </div>
+        <div class="form-group">
+          <label for="destino">Destino (cidade)</label>
+          <input list="cidades" id="destino" name="destino" value="{{ destino or '' }}" placeholder="Lisboa, Paris, Dubai…">
+        </div>
+        <div class="form-group full">
+          <label for="pais">Ou filtrar por país</label>
+          <div class="country-picker"
+               id="pais"
+               data-name="pais"
+               data-value="{{ pais or '' }}"
+               data-placeholder="Clique para pré-visualizar os países…"></div>
+        </div>
+      </div>
+      <datalist id="cidades">
+        {% for c in cidades %}<option value="{{ c }}">{% endfor %}
+      </datalist>
+      <button class="btn btn-primary" type="submit">Procurar no catálogo</button>
+      {% if origem or destino or pais %}
+      <a class="btn btn-ghost" href="{{ url_for('voos') }}">Limpar</a>
+      {% endif %}
+    </form>
+
+    {% if voos %}
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th>Rota</th>
+            <th>Companhia</th>
+            <th>Duração</th>
+            <th>Classe</th>
+            <th>Preço</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in voos %}
+          <tr>
+            <td><strong>{{ v.origem }}</strong> → <strong>{{ v.destino }}</strong></td>
+            <td>{{ v.companhia }}</td>
+            <td>{{ v.duracao or '—' }}</td>
+            <td><span class="badge">{{ v.classe }}</span></td>
+            <td><strong>{{ v.preco|money(v.moeda) }}</strong></td>
+            <td>
+              <a class="btn btn-primary btn-sm" href="{{ url_for('reserva', tipo='voo', item_id=v.id) }}">Reservar passo a passo</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">Nenhum voo encontrado com esses critérios.</div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

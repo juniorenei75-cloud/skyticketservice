@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="{{ lang or 'pt' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ agencia }}{% endblock %} · {{ slogan }}</title>
+  <meta name="description" content="{% block meta_description %}{{ site.descricao }}{% endblock %}">
+  <meta name="keywords" content="{{ site.keywords }}">
+  <meta name="author" content="{{ agencia }} — {{ contacto.responsavel }}">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#5c0a2c">
+  <link rel="canonical" href="{% block canonical %}{{ site.url }}{{ request.path }}{% endblock %}">
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='img/logo.jpg') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/logo.jpg') }}">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ site.nome }}">
+  <meta property="og:locale" content="{{ site.locale }}">
+  <meta property="og:title" content="{% block og_title %}{{ agencia }} · {{ slogan }}{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}{{ site.descricao }}{% endblock %}">
+  <meta property="og:url" content="{{ site.url }}{{ request.path }}">
+  <meta property="og:image" content="{{ site.url }}{{ url_for('static', filename='img/logo-full.jpg') }}">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ agencia }} · {{ slogan }}">
+  <meta name="twitter:description" content="{{ site.descricao }}">
+  <meta name="twitter:image" content="{{ site.url }}{{ url_for('static', filename='img/logo-full.jpg') }}">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TravelAgency",
+    "name": "{{ site.nome }}",
+    "url": "{{ site.url }}",
+    "logo": "{{ site.url }}{{ url_for('static', filename='img/logo.jpg') }}",
+    "email": "{{ contacto.email }}",
+    "telephone": "{{ contacto.telefone_raw }}",
+    "description": "{{ site.descricao }}",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Nampula",
+      "addressCountry": "MZ"
+    }
+  }
+  </script>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/airline.css') }}">
+  <script type="application/json" id="skyticket-paises-json">{{ paises_mundo|tojson }}</script>
+  <script type="application/json" id="skyticket-cidades-json">{{ cidades_por_pais|tojson }}</script>
+  <script type="application/json" id="skyticket-phone-json">{{ phone_countries|tojson }}</script>
+  <script>
+    window.SKYTICKET_LANG = {{ lang|tojson }};
+    window.SKYTICKET_I18N = {{ js_i18n|tojson }};
+  </script>
+  {% block head %}{% endblock %}
+</head>
+<body class="qr-site">
+  {# Barra superior — padrão qr.com #}
+  <div class="qr-topbar">
+    <div class="container">
+      <div class="qr-topbar-right">
+        {% for L in languages %}
+        <a href="{{ url_for('set_language', code=L.code) }}"
+           style="{% if lang == L.code %}color:#5c0a2c;font-weight:700{% endif %}">{{ L.code|upper }}</a>
+        {% endfor %}
+        <a href="{{ url_for('contacto') }}">{{ _('nav_help') }}</a>
+        <a href="{{ contacto.whatsapp_link }}" target="_blank" rel="noopener">{{ _('nav_contact_us') }}</a>
+        <a href="{{ url_for('admin_login') }}">{{ _('nav_login') }}</a>
+      </div>
+    </div>
+  </div>
+
+  <header class="qr-header">
+    <div class="container qr-header-inner">
+      <a class="qr-brand" href="{{ url_for('index') }}">
+        <img class="qr-brand-logo"
+             src="{{ url_for('static', filename='img/logo.jpg') }}"
+             alt="SKYTICKETservice" width="56" height="56">
+        <span class="qr-brand-text">
+          <strong>SKYTICKET<span>service</span></strong>
+          <small>{{ slogan }}</small>
+        </span>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="{{ _('nav_menu') }}">☰ {{ _('nav_menu') }}</button>
+      <ul class="qr-nav nav-links">
+        <li><a href="{{ url_for('reserva_pesquisa') }}" class="{% if request.endpoint and 'reserva' in (request.endpoint or '') %}active{% endif %}">{{ _('nav_book') }}</a></li>
+        <li><a href="{{ url_for('sobre') }}" class="{% if request.endpoint == 'sobre' %}active{% endif %}">{{ _('nav_experience') }}</a></li>
+        <li><a href="{{ url_for('pacotes') }}" class="{% if request.endpoint and 'pacote' in (request.endpoint or '') %}active{% endif %}">{{ _('nav_club') }}</a></li>
+        <li><a href="{{ url_for('destinos') }}" class="{% if request.endpoint == 'destinos' %}active{% endif %}">{{ _('nav_destinations') }}</a></li>
+        <li><a href="{{ url_for('voos') }}" class="{% if request.endpoint == 'voos' %}active{% endif %}">{{ _('nav_deals') }}</a></li>
+        <li><a href="{{ url_for('contacto') }}" class="{% if request.endpoint == 'contacto' %}active{% endif %}">{{ _('nav_help') }}</a></li>
+        <li class="qr-nav-cta"><a href="{{ url_for('reserva_pesquisa') }}">{{ _('nav_book_flight') }}</a></li>
+      </ul>
+    </div>
+  </header>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flashes">
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="qr-footer">
+    <div class="container">
+      <div class="qr-footer-grid">
+        <div>
+          <div class="qr-footer-brand">
+            <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="SKYTICKETservice" width="40" height="40">
+            <strong>SKYTICKETservice</strong>
+          </div>
+          <p>{{ _('footer_blurb') }}</p>
+        </div>
+        <div>
+          <h4>{{ _('nav_book') }}</h4>
+          <a href="{{ url_for('reserva_pesquisa') }}">{{ _('nav_book_flight') }}</a>
+          <a href="{{ url_for('pacotes') }}">{{ _('nav_packages') }}</a>
+          <a href="{{ url_for('hoteis') }}">{{ _('nav_hotels') }}</a>
+          <a href="{{ url_for('voos') }}">{{ _('nav_flight_deals') }}</a>
+          <a href="{{ url_for('destinos') }}">{{ _('nav_destinations') }}</a>
+        </div>
+        <div>
+          <h4>{{ _('nav_experience') }}</h4>
+          <a href="{{ url_for('sobre') }}">{{ _('nav_about_us') }}</a>
+          <a href="{{ url_for('contacto') }}">{{ _('nav_help_contact') }}</a>
+          <a href="{{ contacto.whatsapp_link }}" target="_blank" rel="noopener">WhatsApp 24h</a>
+          <a href="mailto:{{ contacto.email }}">{{ _('nav_email_us') }}</a>
+        </div>
+        <div>
+          <h4>{{ _('nav_contact') }}</h4>
+          <a href="tel:{{ contacto.telefone_raw }}">{{ contacto.telefone }}</a>
+          <a href="mailto:{{ contacto.email }}">{{ contacto.email }}</a>
+          <span style="display:block;padding:4px 0;opacity:.75">{{ contacto.responsavel }}</span>
+          <span style="display:block;padding:4px 0;opacity:.75">{{ contacto.locais }}</span>
+        </div>
+      </div>
+      <div class="qr-footer-bottom">
+        <span>© {{ ano }} {{ site.nome }}. {{ _('footer_rights') }}</span>
+        <span>www.{{ site.dominio }} · {{ _('footer_mozambique') }}</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

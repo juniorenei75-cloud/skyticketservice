@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Pacotes · {{ agencia }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container">
+    <h1>Pacotes turísticos</h1>
+    <p>Experiências completas em Moçambique e no mundo</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <form method="get" class="form-card" style="max-width:100%;margin-bottom:1.5rem;display:flex;gap:.75rem;align-items:end;flex-wrap:wrap;padding:1rem 1.25rem">
+      <div class="form-group" style="flex:1;min-width:200px;margin:0">
+        <label for="q">Pesquisar</label>
+        <input id="q" name="q" value="{{ q or '' }}" placeholder="Destino, título…">
+      </div>
+      <button class="btn btn-primary" type="submit">Filtrar</button>
+      {% if q %}<a class="btn btn-ghost" href="{{ url_for('pacotes') }}">Limpar</a>{% endif %}
+    </form>
+
+    <div class="grid grid-3">
+      {% for p in pacotes %}
+      <article class="card">
+        <div class="card-img" style="background-image:url('{{ p.imagem_url or '' }}')">
+          <span class="badge badge-gold">{{ p.duracao_dias }} dias</span>
+        </div>
+        <div class="card-body">
+          <h3>{{ p.titulo }}</h3>
+          <div class="card-meta">📍 {{ p.destino }}</div>
+          <p class="card-meta">{{ p.descricao[:120] }}{% if p.descricao|length > 120 %}…{% endif %}</p>
+          <div class="card-price">{{ p.preco|money(p.moeda) }} <span>/ pessoa</span></div>
+          <div class="card-actions">
+            <a class="btn btn-primary btn-sm" href="{{ url_for('pacote_detalhe', pid=p.id) }}">Ver detalhes</a>
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('reserva', tipo='pacote', item_id=p.id) }}">Reservar passo a passo</a>
+          </div>
+        </div>
+      </article>
+      {% else %}
+      <div class="empty" style="grid-column:1/-1">Nenhum pacote encontrado.</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

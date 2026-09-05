@@ -1,0 +1,112 @@
+{% extends "booking/base_booking.html" %}
+{% block title %}Fase 5 · Confirmação · {{ reserva.codigo }}{% endblock %}
+
+{% block phase_body %}
+<div class="phase-card" style="text-align:center">
+  <div style="font-size:2.75rem">✅</div>
+  <h2 style="margin-top:.5rem">Fase 5 — Pedido enviado!</h2>
+  <p>Obrigado, <strong>{{ reserva.nome }}</strong>. A reserva foi registada.</p>
+  <div class="code" style="font-size:1.5rem;font-weight:800;letter-spacing:.08em;color:var(--navy);background:var(--sky-soft);display:inline-block;padding:.6rem 1.2rem;border-radius:12px;margin:1rem 0">
+    {{ reserva.codigo }}
+  </div>
+  <p class="card-meta">Guarde este código para acompanhar o estado da reserva.</p>
+
+  <div class="review-grid" style="text-align:left;margin:1.5rem 0">
+    <div class="review-row">
+      <div class="label">Estado</div>
+      <div class="value">
+        {% if reserva.status == 'confirmada' %}<span class="badge badge-success">confirmada</span>
+        {% elif reserva.status == 'cancelada' %}<span class="badge badge-danger">cancelada</span>
+        {% else %}<span class="badge badge-warning">pendente</span>{% endif %}
+      </div>
+    </div>
+    <div class="review-row">
+      <div class="label">Tipo</div>
+      <div class="value">{{ reserva.tipo|capitalize }}</div>
+    </div>
+    <div class="review-row">
+      <div class="label">Rota</div>
+      <div class="value">
+        {% if reserva.tipo == 'mundo' or reserva.rota_livre %}
+          {{ reserva.origem_cidade or '' }}{% if reserva.origem_pais %}, {{ reserva.origem_pais }}{% endif %}
+          →
+          {{ reserva.destino_cidade or '' }}{% if reserva.destino_pais %}, {{ reserva.destino_pais }}{% endif %}
+        {% elif item and reserva.tipo == 'voo' %}
+          {{ item.origem }} → {{ item.destino }} ({{ item.companhia }})
+        {% elif item %}
+          {{ item.titulo }}
+        {% else %}
+          {{ reserva.tipo }}
+        {% endif %}
+      </div>
+    </div>
+    <div class="review-row">
+      <div class="label">Tipo de viagem</div>
+      <div class="value">
+        {% if reserva.tipo_viagem == 'ida_volta' %}
+        <span class="badge badge-gold">⇄ Ida e volta</span>
+        {% else %}
+        <span class="badge">➡ Só ida</span>
+        {% endif %}
+      </div>
+    </div>
+    {% if reserva.assentos %}
+    <div class="review-row">
+      <div class="label">Assentos ida</div>
+      <div class="value">{{ reserva.assentos }}</div>
+    </div>
+    {% endif %}
+    {% if reserva.assentos_volta %}
+    <div class="review-row">
+      <div class="label">Assentos volta</div>
+      <div class="value">{{ reserva.assentos_volta }}</div>
+    </div>
+    {% endif %}
+    <div class="review-row">
+      <div class="label">Passageiros</div>
+      <div class="value">{{ reserva.passageiros }}</div>
+    </div>
+    {% if reserva.data_viagem %}
+    <div class="review-row">
+      <div class="label">Data de ida</div>
+      <div class="value">{{ reserva.data_viagem }}</div>
+    </div>
+    {% endif %}
+    {% if reserva.data_regresso %}
+    <div class="review-row">
+      <div class="label">Data de regresso</div>
+      <div class="value">{{ reserva.data_regresso }}</div>
+    </div>
+    {% endif %}
+    <div class="review-row">
+      <div class="label">Total</div>
+      <div class="value">
+        {% if reserva.total and reserva.total > 0 %}
+          {{ reserva.total|money(reserva.moeda) }}
+        {% else %}
+          Cotação
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if wa_notif and wa_notif.link %}
+  <div style="text-align:left;margin-bottom:1.25rem;padding:1.15rem;border:2px solid #86efac;border-radius:14px;background:#f0fdf4">
+    <p style="margin:0 0 .5rem;font-weight:800;color:var(--navy)">
+      📱 Avisar a agência no WhatsApp
+    </p>
+    <p class="card-meta" style="margin:0 0 1rem">
+      Abre o WhatsApp com os dados desta reserva para {{ contacto.responsavel }} ({{ contacto.telefone }}).
+    </p>
+    <a class="btn btn-primary" style="width:100%" href="{{ wa_notif.link }}" target="_blank" rel="noopener">
+      Enviar no WhatsApp
+    </a>
+  </div>
+  {% endif %}
+
+  <div class="phase-actions" style="justify-content:center;border:none">
+    <a class="btn btn-ghost" href="{{ url_for('index') }}">Início</a>
+    <a class="btn btn-primary" href="{{ url_for('reserva') }}">Nova reserva</a>
+  </div>
+</div>
+{% endblock %}

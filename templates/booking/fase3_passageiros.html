@@ -1,0 +1,76 @@
+{% extends "booking/base_booking.html" %}
+{% block title %}Fase 3 · Passageiros · {{ agencia }}{% endblock %}
+
+{% block phase_body %}
+<div class="phase-card">
+  <h2>👤 Fase 3 — Identificação de todos os passageiros</h2>
+  <p class="card-meta" style="margin-top:-.5rem">
+    Preencha os dados completos de cada passageiro:
+    nome, data de nascimento, nacionalidade, passaporte/BI, contacto e e-mail.
+  </p>
+
+  <div class="phase-summary">
+    <strong>{{ booking.ticket_label }}</strong> · {{ booking.ticket_companhia }}
+    · {{ booking.n_adultos }} adulto(s)
+    {% if booking.n_criancas %} · {{ booking.n_criancas }} criança(s){% endif %}
+  </div>
+
+  <form method="post">
+    {% for p in passageiros_form %}
+    <div class="pax-block">
+      <h3>
+        <span>Passageiro {{ loop.index }}</span>
+        <span class="badge {% if p.tipo_pax == 'criança' %}badge-gold{% endif %}">
+          {{ p.tipo_pax or 'adulto' }}
+        </span>
+      </h3>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label for="nome_{{ loop.index0 }}">Nome completo *</label>
+          <input id="nome_{{ loop.index0 }}" name="nome_{{ loop.index0 }}" required
+                 value="{{ p.nome or '' }}" placeholder="Como no passaporte / BI">
+        </div>
+        <div class="form-group">
+          <label for="nascimento_{{ loop.index0 }}">Data de nascimento *</label>
+          <input id="nascimento_{{ loop.index0 }}" type="date" name="nascimento_{{ loop.index0 }}"
+                 required value="{{ p.nascimento or '' }}">
+        </div>
+        <div class="form-group">
+          <label>Nacionalidade *</label>
+          <div class="country-picker"
+               data-name="nacionalidade_{{ loop.index0 }}"
+               data-value="{{ p.nacionalidade or booking.origem_pais or 'Moçambique' }}"
+               data-required="1"
+               data-placeholder="Nacionalidade (lista de países)…"></div>
+        </div>
+        <div class="form-group">
+          <label for="documento_{{ loop.index0 }}">N.º passaporte ou BI *</label>
+          <input id="documento_{{ loop.index0 }}" name="documento_{{ loop.index0 }}" required
+                 value="{{ p.documento or '' }}" placeholder="Documento de viagem">
+        </div>
+        <div class="form-group">
+          <label for="telefone_{{ loop.index0 }}">Contacto (telefone) *</label>
+          <input id="telefone_{{ loop.index0 }}" name="telefone_{{ loop.index0 }}" required
+                 value="{{ p.telefone or '' }}" placeholder="+258 84 …">
+        </div>
+        <div class="form-group">
+          <label for="email_{{ loop.index0 }}">E-mail *</label>
+          <input id="email_{{ loop.index0 }}" type="email" name="email_{{ loop.index0 }}"
+                 required value="{{ p.email or '' }}" placeholder="email@exemplo.com">
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="form-group">
+      <label for="observacoes">Observações (opcional)</label>
+      <textarea id="observacoes" name="observacoes">{{ booking.observacoes or '' }}</textarea>
+    </div>
+
+    <div class="phase-actions">
+      <a class="btn btn-ghost" href="{{ url_for('reserva_fase', fase=2) }}">← Bilhetes</a>
+      <button class="btn btn-primary" type="submit">Continuar para Assentos →</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Destinos mundiais · {{ agencia }}{% endblock %}
+{% block meta_description %}SKYTICKETservice — viajamos para todos os países do mundo. {{ total }} destinos sem limites.{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container">
+    <h1>Destinos em todo o mundo</h1>
+    <p>
+      {{ total }} países · sem limites de continente.
+      A SKYTICKETservice organiza a sua viagem para <strong>qualquer destino</strong>.
+    </p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <form method="get" class="form-card" style="max-width:100%;margin-bottom:1.5rem;display:flex;gap:.75rem;flex-wrap:wrap;align-items:end;padding:1rem 1.25rem">
+      <div class="form-group" style="flex:2;min-width:200px;margin:0">
+        <label for="q">Pesquisar país</label>
+        <div class="country-picker"
+             id="q"
+             data-name="q"
+             data-value="{{ q or '' }}"
+             data-placeholder="Clique ou digite — pré-visualiza os países existentes"></div>
+      </div>
+      <div class="form-group" style="flex:1;min-width:160px;margin:0">
+        <label for="continente">Continente</label>
+        <select id="continente" name="continente">
+          <option value="">Todos</option>
+          {% for c in continentes_lista %}
+          <option value="{{ c.value }}" {% if continente == c.value %}selected{% endif %}>{{ c.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit">Filtrar</button>
+      {% if q or continente %}
+      <a class="btn btn-ghost" href="{{ url_for('destinos') }}">Limpar</a>
+      {% endif %}
+    </form>
+
+    <p class="card-meta" style="margin-bottom:1.25rem">
+      A mostrar <strong>{{ encontrados }}</strong> de <strong>{{ total }}</strong> países.
+    </p>
+
+    {% for cont, lista in by_cont.items() %}
+    <div style="margin-bottom:2rem">
+      <h2 style="color:var(--navy);font-size:1.25rem;margin:0 0 .85rem">
+        {{ cont }} <span class="badge">{{ lista|length }}</span>
+      </h2>
+      <div class="grid grid-4">
+        {% for p in lista %}
+        <article class="card">
+          <div class="card-body">
+            <span class="badge badge-muted">{{ p.codigo }}</span>
+            <h3 style="margin:.35rem 0">{{ p.nome }}</h3>
+            <div class="card-meta">{{ p.continente }}</div>
+            <div class="card-actions">
+              <a class="btn btn-primary btn-sm"
+                 href="{{ url_for('reserva', tipo='mundo', destino_pais=p.nome) }}">
+                Viajar para aqui
+              </a>
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div class="empty">Nenhum país encontrado com esses filtros.</div>
+    {% endfor %}
+
+    <div class="cta-band" style="border-radius:var(--radius);margin-top:1rem">
+      <div class="container">
+        <h2>Não encontrou o destino?</h2>
+        <p>Peça cotação para qualquer cidade e país — tratamos de tudo.</p>
+        <a class="btn btn-gold" href="{{ url_for('reserva', tipo='mundo') }}">Reservar para qualquer país</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

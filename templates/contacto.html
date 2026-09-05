@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ _('nav_contact') }} · {{ agencia }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container">
+    <h1>{{ _('contact_title') }}</h1>
+    <p>{{ _('contact_lead') }}</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container" style="display:grid;grid-template-columns:1.1fr .9fr;gap:1.5rem">
+    <form method="post" class="form-card" style="max-width:100%">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="nome">{{ _('name') }}</label>
+          <input id="nome" name="nome" required>
+        </div>
+        <div class="form-group">
+          <label for="email">{{ _('email') }}</label>
+          <input id="email" type="email" name="email" required>
+        </div>
+        <div class="form-group">
+          <label for="telefone">{{ _('phone')|replace(' *','') }}</label>
+          <input id="telefone" name="telefone">
+        </div>
+        <div class="form-group">
+          <label for="assunto">{{ _('subject') }}</label>
+          <input id="assunto" name="assunto">
+        </div>
+        <div class="form-group full">
+          <label for="corpo">{{ _('message') }}</label>
+          <textarea id="corpo" name="corpo" required></textarea>
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit">{{ _('send_message') }}</button>
+      {% if wa_link %}
+      <div style="margin-top:1rem;padding:1rem;border-radius:12px;background:#f0fdf4;border:1px solid #86efac">
+        <a class="btn btn-primary" href="{{ wa_link }}" target="_blank" rel="noopener">WhatsApp</a>
+      </div>
+      {% endif %}
+    </form>
+
+    <aside class="detail-panel">
+      <h3 style="margin-top:0;color:var(--navy)">SKYTICKETservice</h3>
+      <p><strong>{{ _('responsible') }}:</strong> {{ contacto.responsavel }}</p>
+      <p>📍 {{ contacto.locais }}</p>
+      <p>📞 <a href="tel:{{ contacto.telefone_raw }}">{{ contacto.telefone }}</a></p>
+      <p>✉ <a href="mailto:{{ contacto.email }}">{{ contacto.email }}</a></p>
+      <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0">
+      <p class="card-meta"><strong>{{ _('hours') }}:</strong> 24h</p>
+      <a class="btn btn-primary" style="width:100%;margin-top:1rem" href="{{ contacto.whatsapp_link }}" target="_blank" rel="noopener">
+        {{ _('whatsapp_btn') }}
+      </a>
+    </aside>
+  </div>
+</section>
+
+<style>
+@media (max-width: 800px) {
+  .section .container[style] { grid-template-columns: 1fr !important; }
+}
+</style>
+{% endblock %}

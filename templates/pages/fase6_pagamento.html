@@ -1,0 +1,575 @@
+{% extends "pages/base_page.html" %}
+{% block step_label %}{{ _('phase') }} 6 {{ _('of') }} 6 · {{ _('payment') }}{% endblock %}
+
+{% block content %}
+<div class="page-panel pay-page">
+  <h1>{{ _('phase6_title') }}</h1>
+  <p class="lead">{{ _('phase6_lead') }}</p>
+
+  {% if pay_error_summary %}
+  <div class="pax-alert pay-alert" role="alert">
+    <div class="pax-alert-icon" aria-hidden="true">!</div>
+    <div class="pax-alert-body">
+      <strong class="pax-alert-title">{{ _('pay_form_alert_title') }}</strong>
+      <p class="pax-alert-lead">{{ _('pay_form_alert_lead') }}</p>
+      <ul class="pax-alert-list">
+        {% for line in pay_error_summary %}
+        <li>{{ line }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="summary-chip pay-summary">
+    <div>
+      <strong>{{ route_label }}</strong>
+      <div class="card-meta">{{ booking.ticket_companhia }} · {{ booking.classe_nome }}</div>
+    </div>
+    <div class="pay-summary-total">
+      <span class="card-meta">{{ _('total_to_pay') }}</span>
+      <strong>
+        {% if cotacao %}{{ _('under_quote') }}{% else %}{{ total|money(moeda) }}{% endif %}
+      </strong>
+    </div>
+  </div>
+
+  <p class="pay-agency-note">{{ _('pay_to_agency_note') }}</p>
+
+  <form method="post" id="pay-form" novalidate autocomplete="on">
+    <strong class="pay-section-label">{{ _('pay_method') }}</strong>
+
+    {% set groups = [
+      ('mz', _('pay_group_mz')),
+      ('intl', _('pay_group_intl')),
+      ('bank', _('pay_group_bank')),
+      ('agency', _('pay_group_agency')),
+    ] %}
+
+    {% for gid, glabel in groups %}
+    {% set items = pagamentos|selectattr('group', 'equalto', gid)|list %}
+    {% if items %}
+    <div class="pay-group">
+      <h3 class="pay-group-title">{{ glabel }}</h3>
+      <div class="pay-methods">
+        {% for p in items %}
+        <label class="pay-option {% if form_pay.metodo == p.id or (not form_pay.metodo and p.id == 'mpesa') %}is-selected{% endif %}">
+          <input type="radio" name="pagamento_metodo" value="{{ p.id }}"
+                 {% if form_pay.metodo == p.id or (not form_pay.metodo and p.id == 'mpesa') %}checked{% endif %}
+                 onchange="togglePayFields(this.value)">
+          <span class="pay-option-logos">
+            <img class="pay-logo" src="{{ url_for('static', filename='img/payments/' ~ p.logo) }}"
+                 alt="{{ p.nome }}" width="120" height="48" loading="lazy">
+            {% for extra in p.logos_extra %}
+            <img class="pay-logo pay-logo--sm" src="{{ url_for('static', filename='img/payments/' ~ extra) }}"
+                 alt="" width="72" height="28" loading="lazy">
+            {% endfor %}
+          </span>
+          <span class="pay-option-text">
+            <strong>{{ p.nome }}</strong>
+            <span class="pay-option-desc">{{ p.desc }}</span>
+          </span>
+          <span class="pay-option-check" aria-hidden="true">✓</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    {# —— Cartão internacional —— #}
+    <div id="fields-cartao" class="pay-fields pay-card-box" style="display:none">
+      <div class="pay-card-head">
+        <strong class="pay-section-label" style="margin:0">{{ _('card_data') }}</strong>
+        <span class="pay-card-brands">
+          <img src="{{ url_for('static', filename='img/payments/visa.svg') }}" alt="Visa" width="64" height="26">
+          <img src="{{ url_for('static', filename='img/payments/mastercard.svg') }}" alt="Mastercard" width="64" height="26">
+        </span>
+      </div>
+
+      {% if card_gateway_ready and card_gateway_name == 'stripe' %}
+      <p class="pay-field-hint">{{ _('card_gateway_ready_note') }}
+        <strong style="display:block;margin-top:.35rem;color:#5c0a2c">Stripe · captura automática</strong>
+      </p>
+      <input type="hidden" name="card_payment_id" id="card_payment_id" value="{{ form_pay.card_payment_id or '' }}">
+      <div id="stripe-payment-element" class="stripe-element-box">
+        <p class="card-meta" id="stripe-loading">A carregar formulário seguro…</p>
+      </div>
+      <div id="stripe-card-errors" class="field-error" role="alert" style="display:none;margin-top:.5rem"></div>
+      {% if pay_field_errors.card_payment_id %}
+      <span class="field-error">{{ pay_field_errors.card_payment_id }}</span>
+      {% endif %}
+
+      {% elif card_gateway_ready %}
+      <p class="pay-field-hint">{{ _('card_gateway_ready_note') }}
+        <strong style="display:block;margin-top:.35rem">{{ card_gateway_name|upper }}</strong>
+      </p>
+      <p class="pay-field-hint" style="color:#b45309">
+        Gateway «{{ card_gateway_name }}» seleccionado — activação completa do checkout em curso.
+        Use Stripe no Admin → Pagamentos para cobrar cartão já, ou outro método abaixo.
+      </p>
+
+      {% else %}
+      <p class="pay-field-hint" style="color:#92400e">{{ _('card_gateway_missing_note') }}</p>
+      <p class="pay-field-hint">{{ _('card_secure_note') }}</p>
+      <div class="form-grid pay-card-grid">
+        <div class="form-group full {% if pay_field_errors.pag_titular %}is-error{% endif %}">
+          <label>{{ _('card_name') }}</label>
+          <input name="pag_titular" autocomplete="cc-name"
+                 placeholder="NOME COMPLETO"
+                 value="{{ form_pay.pag_titular or '' }}"
+                 style="text-transform:uppercase"
+                 {% if pay_field_errors.pag_titular %}aria-invalid="true"{% endif %}>
+          {% if pay_field_errors.pag_titular %}<span class="field-error">{{ pay_field_errors.pag_titular }}</span>{% endif %}
+        </div>
+        <div class="form-group full {% if pay_field_errors.pag_numero %}is-error{% endif %}">
+          <label>{{ _('card_number') }}</label>
+          <input id="pag_numero" name="pag_numero" autocomplete="cc-number" inputmode="numeric"
+                 placeholder="ACCT-000003" maxlength="23"
+                 value="{{ form_pay.pag_numero or '' }}"
+                 {% if pay_field_errors.pag_numero %}aria-invalid="true"{% endif %}>
+          {% if pay_field_errors.pag_numero %}<span class="field-error">{{ pay_field_errors.pag_numero }}</span>{% endif %}
+        </div>
+        <div class="form-group {% if pay_field_errors.pag_validade %}is-error{% endif %}">
+          <label>{{ _('card_exp') }}</label>
+          <input id="pag_validade" name="pag_validade" autocomplete="cc-exp"
+                 placeholder="MM/AA" maxlength="5"
+                 value="{{ form_pay.pag_validade or '' }}"
+                 {% if pay_field_errors.pag_validade %}aria-invalid="true"{% endif %}>
+          {% if pay_field_errors.pag_validade %}<span class="field-error">{{ pay_field_errors.pag_validade }}</span>{% endif %}
+        </div>
+        <div class="form-group {% if pay_field_errors.pag_cvv %}is-error{% endif %}">
+          <label>{{ _('card_cvv') }}</label>
+          <input name="pag_cvv" autocomplete="cc-csc" inputmode="numeric" maxlength="4"
+                 placeholder="123"
+                 value="{{ form_pay.pag_cvv or '' }}"
+                 {% if pay_field_errors.pag_cvv %}aria-invalid="true"{% endif %}>
+          {% if pay_field_errors.pag_cvv %}<span class="field-error">{{ pay_field_errors.pag_cvv }}</span>{% endif %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    {# —— M-Pesa / e-Mola —— #}
+    <div id="fields-mobile" class="pay-fields" style="display:none">
+      <strong class="pay-section-label">{{ _('mobile_wallet') }}</strong>
+      <p class="pay-field-hint" id="mobile-hint">{{ _('mobile_mpesa_hint') }}</p>
+      <div class="form-group {% if pay_field_errors.pag_telefone %}is-error{% endif %}">
+        <label>{{ _('mobile_number') }}</label>
+        <input name="pag_telefone" placeholder="+258 84 000 0000" inputmode="tel"
+               value="{{ form_pay.pag_telefone or '' }}"
+               {% if pay_field_errors.pag_telefone %}aria-invalid="true"{% endif %}>
+        {% if pay_field_errors.pag_telefone %}<span class="field-error">{{ pay_field_errors.pag_telefone }}</span>{% endif %}
+      </div>
+    </div>
+
+    {# —— PayPal —— #}
+    <div id="fields-paypal" class="pay-fields" style="display:none">
+      <strong class="pay-section-label">PayPal</strong>
+      <div class="form-group {% if pay_field_errors.pag_paypal_email %}is-error{% endif %}">
+        <label>{{ _('paypal_email') }}</label>
+        <input name="pag_paypal_email" type="email" autocomplete="email"
+               placeholder="nome@email.com"
+               value="{{ form_pay.pag_paypal_email or '' }}"
+               {% if pay_field_errors.pag_paypal_email %}aria-invalid="true"{% endif %}>
+        {% if pay_field_errors.pag_paypal_email %}<span class="field-error">{{ pay_field_errors.pag_paypal_email }}</span>{% endif %}
+      </div>
+    </div>
+
+    {# —— Transferência / Multibanco —— #}
+    <div id="fields-ref" class="pay-fields" style="display:none">
+      <strong class="pay-section-label">{{ _('ref_transfer') }}</strong>
+      <div class="form-group {% if pay_field_errors.pag_referencia %}is-error{% endif %}">
+        <label>{{ _('ref_proof') }}</label>
+        <input name="pag_referencia" value="{{ form_pay.pag_referencia or '' }}"
+               placeholder="Ex.: REF-12345 / NIB"
+               {% if pay_field_errors.pag_referencia %}aria-invalid="true"{% endif %}>
+        {% if pay_field_errors.pag_referencia %}<span class="field-error">{{ pay_field_errors.pag_referencia }}</span>{% endif %}
+      </div>
+    </div>
+
+    <p class="card-meta pay-demo">{{ _('pay_demo_note') }}</p>
+
+    <div class="page-actions">
+      <a class="btn btn-ghost" href="{{ url_for('reserva_confirmacao') }}">{{ _('btn_back') }}</a>
+      <button class="btn btn-primary" type="submit" id="btn-pay-submit">{{ _('btn_pay') }}</button>
+    </div>
+  </form>
+</div>
+{% if card_gateway_ready and card_gateway_name == 'stripe' %}
+<script src="https://js.stripe.com/v3/"></script>
+{% endif %}
+<script>
+(function () {
+  var HINT_MPESA = {{ _('mobile_mpesa_hint')|tojson }};
+  var HINT_EMOLA = {{ _('mobile_emola_hint')|tojson }};
+  var STRIPE_READY = {{ (card_gateway_ready and card_gateway_name == 'stripe')|tojson }};
+  var CREATE_URL = {{ url_for('reserva_pagamento_create_intent')|tojson }};
+  var CONFIRM_URL = {{ url_for('reserva_pagamento_confirm_card')|tojson }};
+  var BTN_PAY = {{ _('btn_pay')|tojson }};
+  var BTN_CARD = {{ _('btn_pay_card')|tojson }};
+
+  var stripe = null;
+  var elements = null;
+  var paymentElement = null;
+  var intentReady = false;
+  var paying = false;
+
+  function showStripeError(msg) {
+    var el = document.getElementById('stripe-card-errors');
+    if (!el) return;
+    el.style.display = msg ? 'block' : 'none';
+    el.textContent = msg || '';
+  }
+
+  function mountStripe() {
+    if (!STRIPE_READY || intentReady || paying) return;
+    var box = document.getElementById('stripe-payment-element');
+    if (!box) return;
+    paying = true;
+    fetch(CREATE_URL, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin'
+    })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        paying = false;
+        if (!res.ok || !res.j.ok) {
+          showStripeError((res.j && res.j.message) || 'Não foi possível iniciar o pagamento.');
+          var load = document.getElementById('stripe-loading');
+          if (load) load.textContent = 'Gateway indisponível — escolha outro método ou configure as chaves.';
+          return;
+        }
+        var pub = res.j.publishable_key;
+        var secret = res.j.client_secret;
+        var pid = res.j.payment_id;
+        var hid = document.getElementById('card_payment_id');
+        if (hid) hid.value = pid || '';
+        if (typeof Stripe === 'undefined') {
+          showStripeError('Stripe.js não carregou. Verifique a ligação à Internet.');
+          return;
+        }
+        stripe = Stripe(pub);
+        elements = stripe.elements({
+          clientSecret: secret,
+          appearance: {
+            theme: 'stripe',
+            variables: { colorPrimary: '#5c0a2c', borderRadius: '4px' }
+          }
+        });
+        var load = document.getElementById('stripe-loading');
+        if (load) load.remove();
+        paymentElement = elements.create('payment');
+        paymentElement.mount('#stripe-payment-element');
+        intentReady = true;
+      })
+      .catch(function (err) {
+        paying = false;
+        showStripeError(String(err && err.message || err));
+      });
+  }
+
+  function togglePayFields(v) {
+    var cartao = document.getElementById('fields-cartao');
+    var mobile = document.getElementById('fields-mobile');
+    var paypal = document.getElementById('fields-paypal');
+    var ref = document.getElementById('fields-ref');
+    var hint = document.getElementById('mobile-hint');
+    var isCard = (v === 'cartao' || v === 'credito' || v === 'debito');
+    if (cartao) cartao.style.display = isCard ? 'block' : 'none';
+    if (mobile) mobile.style.display = (v === 'mpesa' || v === 'emola') ? 'block' : 'none';
+    if (paypal) paypal.style.display = (v === 'paypal') ? 'block' : 'none';
+    if (ref) ref.style.display = (v === 'multibanco' || v === 'transferencia') ? 'block' : 'none';
+    if (hint) hint.textContent = (v === 'emola') ? HINT_EMOLA : HINT_MPESA;
+    document.querySelectorAll('.pay-option').forEach(function (el) {
+      var inp = el.querySelector('input');
+      el.classList.toggle('is-selected', inp && inp.checked);
+    });
+    var btn = document.getElementById('btn-pay-submit');
+    if (btn) btn.textContent = (isCard && STRIPE_READY) ? BTN_CARD : BTN_PAY;
+    if (isCard && STRIPE_READY) mountStripe();
+  }
+
+  // Formatar número do cartão (fallback sem gateway)
+  var num = document.getElementById('pag_numero');
+  if (num) {
+    num.addEventListener('input', function () {
+      var d = (num.value || '').replace(/\D/g, '').slice(0, 19);
+      num.value = d.replace(/(.{4})/g, '$1 ').trim();
+    });
+  }
+  var exp = document.getElementById('pag_validade');
+  if (exp) {
+    exp.addEventListener('input', function () {
+      var d = (exp.value || '').replace(/\D/g, '').slice(0, 4);
+      if (d.length >= 3) exp.value = d.slice(0, 2) + '/' + d.slice(2);
+      else exp.value = d;
+    });
+  }
+
+  var form = document.getElementById('pay-form');
+  if (form) {
+    form.addEventListener('submit', function (ev) {
+      var checked = document.querySelector('input[name="pagamento_metodo"]:checked');
+      var metodo = checked ? checked.value : '';
+      if (!(metodo === 'cartao' || metodo === 'credito' || metodo === 'debito') || !STRIPE_READY) {
+        return; // fluxo normal (POST)
+      }
+      ev.preventDefault();
+      if (!stripe || !elements || !intentReady) {
+        showStripeError('Aguarde o formulário do cartão carregar.');
+        mountStripe();
+        return;
+      }
+      if (paying) return;
+      paying = true;
+      var btn = document.getElementById('btn-pay-submit');
+      if (btn) { btn.disabled = true; btn.textContent = 'A processar…'; }
+      showStripeError('');
+
+      stripe.confirmPayment({
+        elements: elements,
+        redirect: 'if_required',
+        confirmParams: {
+          return_url: window.location.href
+        }
+      }).then(function (result) {
+        if (result.error) {
+          paying = false;
+          if (btn) { btn.disabled = false; btn.textContent = BTN_CARD; }
+          showStripeError(result.error.message || 'Pagamento recusado.');
+          return;
+        }
+        var intent = result.paymentIntent;
+        var pid = (intent && intent.id) || (document.getElementById('card_payment_id') || {}).value || '';
+        return fetch(CONFIRM_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({ payment_id: pid })
+        }).then(function (r) {
+          return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+        }).then(function (res) {
+          if (res.ok && res.j.ok && res.j.redirect) {
+            window.location.href = res.j.redirect;
+            return;
+          }
+          paying = false;
+          if (btn) { btn.disabled = false; btn.textContent = BTN_CARD; }
+          showStripeError((res.j && res.j.message) || 'Confirmação falhou.');
+        });
+      }).catch(function (err) {
+        paying = false;
+        if (btn) { btn.disabled = false; btn.textContent = BTN_CARD; }
+        showStripeError(String(err && err.message || err));
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var c = document.querySelector('input[name="pagamento_metodo"]:checked');
+    if (c) togglePayFields(c.value);
+    window.togglePayFields = togglePayFields;
+    var alertEl = document.querySelector('.pay-alert');
+    if (alertEl) alertEl.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
+})();
+</script>
+{% endblock %}
+
+{% block head %}
+<style>
+  .pay-summary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 0.75rem;
+  }
+  .pay-summary-total { text-align: right; }
+  .pay-summary-total strong {
+    display: block;
+    font-size: 1.25rem;
+    color: #5c0a2c;
+  }
+  .pay-agency-note {
+    margin: 0 0 1.15rem;
+    padding: 0.75rem 0.9rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    color: #5c0a2c;
+    background: #f9f0f4;
+    border-left: 3px solid #5c0a2c;
+  }
+  .pay-section-label {
+    display: block;
+    margin: 0.35rem 0 0.75rem;
+    color: #5c0a2c;
+    font-size: 0.95rem;
+  }
+  .pay-group { margin-bottom: 1.15rem; }
+  .pay-group-title {
+    margin: 0 0 0.55rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #777;
+  }
+  .pay-methods { display: grid; gap: 0.55rem; }
+  .pay-option {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.85rem;
+    align-items: center;
+    margin: 0;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid #e5e0dc;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+  }
+  .pay-option:hover { border-color: #c4a574; }
+  .pay-option.is-selected {
+    border-color: #5c0a2c;
+    background: #faf6f8;
+    box-shadow: 0 0 0 1px #5c0a2c;
+  }
+  .pay-option input { position: absolute; opacity: 0; pointer-events: none; }
+  .pay-option-logos {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+  }
+  .pay-logo {
+    display: block;
+    width: 96px;
+    height: 38px;
+    object-fit: contain;
+    border-radius: 4px;
+    background: #f7f7f7;
+  }
+  .pay-logo--sm {
+    width: 52px;
+    height: 22px;
+  }
+  .pay-option-text { min-width: 0; }
+  .pay-option-text strong {
+    display: block;
+    font-size: 0.95rem;
+    color: #1a1a1a;
+  }
+  .pay-option-desc {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.8rem;
+    color: #666;
+    line-height: 1.35;
+  }
+  .pay-option-check {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    border: 2px solid #ddd;
+    color: transparent;
+    display: grid;
+    place-items: center;
+    font-size: 0.75rem;
+    font-weight: 800;
+  }
+  .pay-option.is-selected .pay-option-check {
+    background: #5c0a2c;
+    border-color: #5c0a2c;
+    color: #fff;
+  }
+  .pay-fields {
+    margin: 1rem 0 1.15rem;
+    padding: 1rem 1.05rem;
+    border: 1px solid #e8e0dc;
+    background: #fff;
+  }
+  .pay-card-box { border-top: 3px solid #1A1F71; }
+  .stripe-element-box {
+    min-height: 48px;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid #e5e0dc;
+    background: #fafafa;
+    border-radius: 6px;
+  }
+  .pay-card-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+  }
+  .pay-card-brands {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+  }
+  .pay-card-brands img {
+    height: 26px;
+    width: auto;
+  }
+  .pay-field-hint {
+    margin: 0 0 0.85rem;
+    font-size: 0.82rem;
+    color: #666;
+    line-height: 1.4;
+  }
+  .pay-demo { margin-top: 1rem; line-height: 1.45; }
+  .pay-page .form-group.is-error input {
+    border-color: #d97706;
+    background: #fffbeb;
+  }
+  .pay-page .field-error {
+    display: block;
+    margin-top: 0.3rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #b45309;
+  }
+  .pax-alert {
+    display: flex;
+    gap: 0.9rem;
+    align-items: flex-start;
+    margin: 0 0 1.15rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid #e8c4a8;
+    border-left: 4px solid #b45309;
+    background: linear-gradient(180deg, #fffbeb 0%, #fff7ed 100%);
+    color: #7c2d12;
+  }
+  .pax-alert-icon {
+    flex: 0 0 2rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: #b45309;
+    color: #fff;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pax-alert-title { display: block; color: #9a3412; margin-bottom: 0.25rem; }
+  .pax-alert-lead { margin: 0 0 0.5rem; font-size: 0.9rem; color: #9a3412; }
+  .pax-alert-list { margin: 0; padding-left: 1.1rem; font-size: 0.88rem; }
+  @media (max-width: 560px) {
+    .pay-option {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+    .pay-option-check { display: none; }
+    .pay-logo { width: 88px; height: 34px; }
+  }
+</style>
+{% endblock %}

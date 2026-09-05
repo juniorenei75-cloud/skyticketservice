@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ pacote.titulo }} · {{ agencia }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container">
+    <h1>{{ pacote.titulo }}</h1>
+    <p>📍 {{ pacote.destino }} · {{ pacote.duracao_dias }} dias</p>
+  </div>
+</div>
+
+<section class="section" style="padding-top:0">
+  <div class="container detail-layout">
+    <div>
+      <div class="detail-hero" style="background-image:url('{{ pacote.imagem_url or '' }}')"></div>
+      <div class="form-card" style="max-width:100%;margin-top:1.25rem">
+        <h2 style="margin-top:0;color:var(--navy)">Sobre este pacote</h2>
+        <p>{{ pacote.descricao }}</p>
+        {% if pacote.inclui %}
+        <h3 style="color:var(--navy)">O que inclui</h3>
+        <p>{{ pacote.inclui }}</p>
+        {% endif %}
+      </div>
+    </div>
+    <aside class="detail-panel">
+      <span class="badge">Pacote turístico</span>
+      <div class="price">{{ pacote.preco|money(pacote.moeda) }}</div>
+      <p class="card-meta">por pessoa · {{ pacote.duracao_dias }} dias</p>
+      <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0">
+      <p><strong>Destino:</strong> {{ pacote.destino }}</p>
+      <p><strong>Duração:</strong> {{ pacote.duracao_dias }} dias</p>
+      <a class="btn btn-primary" style="width:100%;margin-top:1rem" href="{{ url_for('reserva', tipo='pacote', item_id=pacote.id) }}">
+        Reservar passo a passo
+      </a>
+      <a class="btn btn-ghost" style="width:100%;margin-top:.5rem" href="{{ url_for('pacotes') }}">← Voltar aos pacotes</a>
+    </aside>
+  </div>
+</section>
+{% endblock %}

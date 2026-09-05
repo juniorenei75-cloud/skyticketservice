@@ -1,0 +1,48 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Pacotes{% endblock %}
+
+{% block content %}
+<div class="admin-top">
+  <h1>Pacotes turísticos</h1>
+  <a class="btn btn-primary btn-sm" href="{{ url_for('admin_pacote_novo') }}">+ Novo pacote</a>
+</div>
+
+<div class="table-wrap">
+  <table class="data">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Título</th>
+        <th>Destino</th>
+        <th>Dias</th>
+        <th>Preço</th>
+        <th>Estado</th>
+        <th>Acções</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pacotes %}
+      <tr>
+        <td>{{ p.id }}</td>
+        <td><strong>{{ p.titulo }}</strong></td>
+        <td>{{ p.destino }}</td>
+        <td>{{ p.duracao_dias }}</td>
+        <td>{{ p.preco|money(p.moeda) }}</td>
+        <td>
+          {% if p.ativo %}<span class="badge badge-success">activo</span>
+          {% else %}<span class="badge badge-muted">inactivo</span>{% endif %}
+        </td>
+        <td class="actions-row">
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('admin_pacote_editar', pid=p.id) }}">Editar</a>
+          <form class="inline-form" method="post" action="{{ url_for('admin_pacote_apagar', pid=p.id) }}" data-confirm="Apagar este pacote?">
+            <button class="btn btn-danger btn-sm" type="submit">Apagar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align:center;color:var(--muted)">Sem pacotes.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

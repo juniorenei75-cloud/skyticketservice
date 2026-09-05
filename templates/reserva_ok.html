@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Reserva {{ reserva.codigo }} · {{ agencia }}{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <div class="success-box">
+      <div style="font-size:2.5rem">✅</div>
+      <h1 style="color:var(--navy);margin:.5rem 0">Pedido recebido!</h1>
+      <p>Obrigado, <strong>{{ reserva.nome }}</strong>. A sua reserva foi registada com o código:</p>
+      <div class="code">{{ reserva.codigo }}</div>
+      <p class="card-meta">Guarde este código para acompanhamento.</p>
+
+      <div style="text-align:left;margin:1.5rem 0;background:var(--bg);padding:1rem 1.15rem;border-radius:12px">
+        <p><strong>E-mail:</strong> {{ reserva.email }}</p>
+        <p><strong>Tipo:</strong> {{ reserva.tipo|capitalize }}</p>
+        {% if item %}
+          {% if reserva.tipo == 'voo' %}
+          <p><strong>Voo:</strong> {{ item.origem }} → {{ item.destino }} ({{ item.companhia }})</p>
+          {% else %}
+          <p><strong>Pacote:</strong> {{ item.titulo }}</p>
+          {% endif %}
+        {% endif %}
+        <p><strong>Passageiros:</strong> {{ reserva.passageiros }}</p>
+        {% if reserva.data_viagem %}<p><strong>Data:</strong> {{ reserva.data_viagem }}</p>{% endif %}
+        <p><strong>Total estimado:</strong> {{ reserva.total|money(reserva.moeda) }}</p>
+        <p><strong>Estado:</strong> <span class="badge badge-warning">{{ reserva.status }}</span></p>
+      </div>
+
+      <div style="text-align:left;margin-bottom:1.25rem;padding:1.15rem;border:2px solid #86efac;border-radius:14px;background:#f0fdf4">
+        <p style="margin:0 0 .5rem;font-weight:800;color:var(--navy);font-size:1.05rem">
+          📱 Passo seguinte: avisar a agência no WhatsApp
+        </p>
+        <p class="card-meta" style="margin:0 0 1rem">
+          Clique no botão. O WhatsApp abre com a mensagem já pronta para
+          <strong>{{ contacto.responsavel }}</strong> ({{ contacto.telefone }}).
+          Depois toque em <strong>Enviar</strong> no WhatsApp.
+        </p>
+        {% if wa_notif and wa_notif.link %}
+        <a class="btn btn-primary" style="width:100%;font-size:1rem;padding:.9rem 1.2rem"
+           href="{{ wa_notif.link }}" target="_blank" rel="noopener">
+          Enviar no WhatsApp
+        </a>
+        {% else %}
+        <a class="btn btn-primary" style="width:100%"
+           href="{{ contacto.whatsapp_link }}" target="_blank" rel="noopener">
+          Abrir WhatsApp da agência
+        </a>
+        {% endif %}
+      </div>
+
+      <a class="btn btn-ghost" href="{{ url_for('index') }}">Voltar ao início</a>
+      <a class="btn btn-ghost" href="{{ url_for('contacto') }}">Contactar-nos</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

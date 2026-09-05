@@ -1,0 +1,47 @@
+{% extends "booking/base_booking.html" %}
+{% block title %}Fase 6 · Pagamento · {{ agencia }}{% endblock %}
+
+{% block phase_body %}
+<div class="phase-card">
+  <h2>💳 Fase 6 — Pagamento e confirmação final</h2>
+  <p class="card-meta" style="margin-top:-.5rem">
+    Escolha a forma de pagamento. Ao concluir, recebe a confirmação final da reserva
+    com o código <strong>SKY-…</strong>.
+  </p>
+
+  <div class="phase-summary">
+    <strong>{{ route_label }}</strong><br>
+    {{ booking.ticket_label }} · {{ booking.classe_nome }}
+    <br>
+    Total:
+    <strong style="color:var(--sky);font-size:1.2rem">
+      {% if cotacao %}Sob cotação{% else %}{{ total|money(moeda) }}{% endif %}
+    </strong>
+    · {{ n_pax }} passageiro(s)
+  </div>
+
+  <form method="post">
+    <strong style="color:var(--navy)">Opções de pagamento *</strong>
+    <div style="margin-top:.75rem">
+      {% for p in pagamentos %}
+      <label class="ticket-option" style="display:block;margin-bottom:.55rem">
+        <input type="radio" name="pagamento_metodo" value="{{ p.id }}" required
+               {% if loop.first %}checked{% endif %}>
+        <strong>{{ p.nome }}</strong>
+        <div class="card-meta">{{ p.desc }}</div>
+      </label>
+      {% endfor %}
+    </div>
+
+    <p class="card-meta" style="margin-top:1rem">
+      ℹ️ Pagamento registado no sistema como pedido. A equipa SKYTICKETservice valida
+      (cartão, multibanco, M-Pesa, etc.) e confirma a emissão do bilhete.
+    </p>
+
+    <div class="phase-actions">
+      <a class="btn btn-ghost" href="{{ url_for('reserva_fase', fase=5) }}">← Confirmação</a>
+      <button class="btn btn-primary" type="submit">✓ Pagar e confirmar reserva</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,925 @@
+{% extends "pages/base_page.html" %}
+{% block step_label %}{{ _('phase') }} 2 {{ _('of') }} 6 · {{ _('flights_packages') }}{% endblock %}
+
+{% block content %}
+<div class="page-panel fare-page">
+  <h1>{{ _('phase2_title') }}</h1>
+  <p class="lead">{{ _('phase2_lead') }}</p>
+
+  <div class="fare-summary">
+    <div class="fare-summary-main">
+      <strong>{{ route_label }}</strong>
+      <span>
+        {% if round_trip %}{{ _('round_trip') }}{% else %}{{ _('one_way') }}{% endif %}
+        · {{ _('dep_short') }} {{ booking.data_viagem }}
+        {% if booking.data_regresso %} · {{ _('ret_short') }} {{ booking.data_regresso }}{% endif %}
+        · {{ booking.n_adultos }} {{ _('adult') }}{% if booking.n_adultos != 1 %}s{% endif %}
+        {% if booking.n_criancas %} · {{ booking.n_criancas }} {{ _('child') }}{% if booking.n_criancas != 1 %}s{% endif %}{% endif %}
+        · {{ booking.classe_nome }}
+      </span>
+      {% if booking.ticket_mode == 'melhores' %}
+      <span class="fare-mode-badge">{{ _('mode_best_badge') }}</span>
+      {% elif booking.ticket_mode == 'baratos' %}
+      <span class="fare-mode-badge fare-mode-badge--cheap">{{ _('mode_cheap_badge') }}</span>
+      {% endif %}
+    </div>
+    <div class="fare-summary-meta">
+      <strong>{{ _('phase2_count').replace('{n}', (tickets_count or tickets|length)|string) }}</strong>
+      <span>{{ _('phase2_sorted') }}</span>
+      <a href="{{ url_for('reserva_preferencia') }}" style="font-size:.82rem;font-weight:700;margin-top:4px">
+        {{ _('pref_title') }} ↻
+      </a>
+    </div>
+  </div>
+
+  {% set live_count = tickets|selectattr('fonte','in',['duffel','amadeus','kiwi'])|list|length %}
+  {% if live_count == 0 %}
+    {% set live_count = tickets|selectattr('live')|list|length %}
+  {% endif %}
+  {% if tickets_fonte in ('duffel', 'amadeus', 'kiwi', 'live') or live_count > 0 %}
+  <p class="fare-source fare-source--live">
+    ● {% if tickets_fonte == 'duffel' or (live_count > 0 and tickets_fonte not in ('amadeus','kiwi')) %}{{ _('phase2_source_duffel') }}
+      {% elif tickets_fonte == 'amadeus' %}{{ _('phase2_source_amadeus') }}
+      {% elif tickets_fonte == 'kiwi' %}{{ _('phase2_source_kiwi') }}
+      {% else %}{{ _('phase2_source_live') }}{% endif %}
+    {% if live_count %} · {{ live_count }} {{ _('live_offers_count') }}{% endif %}
+  </p>
+  {% elif tickets_fonte == 'catalogo' %}
+  <p class="fare-source fare-source--live">● {{ _('phase2_source_catalog') }}</p>
+  {% elif tickets_fonte == 'sem_api' %}
+  <p class="fare-source fare-source--market">{{ _('phase2_source_no_api') }}</p>
+  {% elif tickets_fonte == 'sem_resultados' %}
+  <p class="fare-source fare-source--market">{{ _('phase2_source_no_results') }}</p>
+  {% elif tickets_fonte == 'sem_iata' %}
+  <p class="fare-source fare-source--market">{{ _('phase2_source_no_iata') }}</p>
+  {% else %}
+  <p class="fare-source fare-source--market">{{ _('phase2_source_no_api') }}</p>
+  {% endif %}
+
+  <form method="post" class="fare-form">
+    <div class="fare-list">
+    {% for t in tickets %}
+    {% set is_flight = t.kind == 'voo' or t.kind is none %}
+    {% set code = t.airline_code or (t.flight_no[:2] if t.flight_no else 'SK') %}
+    {% set brand = t.brand_color or '#5c0a2c' %}
+    {% set det_id = 'fare-det-' ~ loop.index %}
+    <div class="fare-card-wrap" style="--brand: {{ brand }}">
+      <label class="fare-card {% if loop.first %}is-cheapest{% endif %} {% if t.kind == 'cotacao' %}fare-card--quote{% elif t.kind == 'pacote' %}fare-card--package{% endif %}">
+        <input type="radio" name="ticket_uid" value="{{ t.uid }}" {% if loop.first %}checked{% endif %} required class="fare-radio">
+
+        {# —— Logotipo + companhia —— #}
+        <div class="fare-brand">
+          <div class="fare-brand-row">
+            <div class="fare-logo-wrap">
+              {% if t.kind == 'cotacao' %}
+              <div class="fare-logo fare-logo--sky" aria-hidden="true">
+                <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="SKYTICKET" width="96" height="64">
+              </div>
+              {% elif t.kind == 'pacote' %}
+              <div class="fare-logo" aria-hidden="true">PK</div>
+              {% else %}
+              {% set logos = t.logo_urls if t.logo_urls else [
+                url_for('static', filename='img/airlines/' ~ code ~ '.png'),
+                'https://pics.avs.io/200/200/' ~ code ~ '.png'
+              ] %}
+              <img class="fare-logo-img"
+                   src="{{ t.logo_url or logos[0] }}"
+                   data-fallbacks="{{ logos|join('|') }}"
+                   data-fallback-i="0"
+                   alt="{{ t.companhia }}"
+                   title="{{ t.companhia }}"
+                   width="110" height="72"
+                   loading="eager"
+                   onerror="window.__fareLogoFallback && window.__fareLogoFallback(this)">
+              <div class="fare-logo fare-logo-fallback" style="display:none" aria-hidden="true">{{ code }}</div>
+              {% endif %}
+            </div>
+            <div class="fare-airline">
+              <strong>{{ t.companhia }}</strong>
+              {% if t.flight_no %}
+              <span class="fare-flight-no">{{ t.flight_no }}{% if t.aircraft %} · {{ t.aircraft }}{% endif %}</span>
+              {% elif t.kind == 'pacote' %}
+              <span class="fare-flight-no">{{ _('package') }}</span>
+              {% elif t.kind == 'cotacao' %}
+              <span class="fare-flight-no">{{ _('custom') }}</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="fare-tags">
+            {% if loop.first and t.preco and t.preco > 0 %}
+            <span class="fare-tag fare-tag--best">{{ _('cheapest') }}</span>
+            {% endif %}
+            {% if t.live or t.fonte in ('duffel', 'amadeus', 'kiwi', 'live') or t.tipo == 'tempo_real' %}
+            <span class="fare-tag fare-tag--live">{{ _('live_fare_airline') }}</span>
+            {% if t.airline_code %}<span class="fare-tag fare-tag--muted">{{ t.airline_code }}</span>{% endif %}
+            {% elif t.low_cost %}
+            <span class="fare-tag">Low cost</span>
+            {% endif %}
+            {% if t.trip_label %}
+            <span class="fare-tag fare-tag--muted">{{ t.trip_label }}</span>
+            {% endif %}
+          </div>
+        </div>
+
+        {# —— Timeline do voo —— #}
+        <div class="fare-itin">
+          {% if is_flight and t.horario %}
+          <div class="fare-time-block">
+            <span class="fare-time">{{ t.horario }}</span>
+            <span class="fare-iata">{{ t.origem_iata or booking.origem_cidade or '—' }}</span>
+            <span class="fare-city">{{ t.origem_cidade or t.origem or booking.origem_cidade }}</span>
+          </div>
+          <div class="fare-path">
+            <span class="fare-duration">{{ t.duracao or '—' }}</span>
+            <div class="fare-line">
+              <span class="fare-dot"></span>
+              <span class="fare-dash"></span>
+              <span class="fare-plane">✈</span>
+              <span class="fare-dash"></span>
+              <span class="fare-dot"></span>
+            </div>
+            <span class="fare-stops">
+              {{ t.stops_label or (_('direct') if t.stops == 0 else (t.stops ~ ' stop(s)')) }}
+              {% if t.via %} · via {{ t.via }}{% endif %}
+            </span>
+          </div>
+          <div class="fare-time-block fare-time-block--arr">
+            <span class="fare-time">
+              {{ t.horario_chegada or '—' }}
+              {% if t.next_day %}<sup class="fare-plus1">+1</sup>{% endif %}
+            </span>
+            <span class="fare-iata">{{ t.destino_iata or booking.destino_cidade or '—' }}</span>
+            <span class="fare-city">{{ t.destino_cidade or t.destino or booking.destino_cidade }}</span>
+          </div>
+          {% else %}
+          <div class="fare-itin-alt">
+            <strong>{{ t.label }}</strong>
+            <span>{{ t.detalhes or t.duracao or '' }}</span>
+          </div>
+          {% endif %}
+        </div>
+
+        {# —— Resumo curto —— #}
+        <div class="fare-meta">
+          <span><i>🛍</i> {{ t.bagagem_cabine or 'Cabine' }}</span>
+          <span><i>🧳</i> {{ t.bagagem or '—' }}</span>
+          <span><i>💺</i> {{ _('class_word') }} {{ t.classe or booking.classe_nome }}</span>
+          {% if t.seats_left %}
+          <span class="fare-seats {% if t.seats_left <= 4 %}is-low{% endif %}">
+            {{ t.seats_left }} {{ _('seats_remaining') }}
+          </span>
+          {% endif %}
+        </div>
+
+        {# —— Preço —— #}
+        <div class="fare-price-col">
+          <div class="fare-price">
+            {% if t.preco and t.preco > 0 %}
+              <span class="fare-amount">{{ t.preco|money(t.moeda) }}</span>
+              <span class="fare-per">{{ _('per_adult') }}</span>
+              {% if t.markup_percent and t.preco_base is defined and t.preco_base and t.preco_base != t.preco %}
+              <span class="fare-markup-note">{{ _('includes_agency_service') }}</span>
+              {% endif %}
+            {% else %}
+              <span class="fare-amount fare-amount--quote">{{ _('quote') }}</span>
+            {% endif %}
+          </div>
+          <span class="fare-select-hint">Seleccionar</span>
+          <span class="fare-rank">#{{ loop.index }}</span>
+        </div>
+      </label>
+
+      {# —— Mostrar detalhes do voo —— #}
+      <button type="button"
+              class="fare-details-toggle"
+              data-target="{{ det_id }}"
+              data-show="{{ _('show_flight_details') }}"
+              data-hide="{{ _('hide_flight_details') }}"
+              aria-expanded="false"
+              aria-controls="{{ det_id }}">
+        <span class="fare-details-toggle-text">{{ _('show_flight_details') }}</span>
+        <span class="fare-details-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="fare-details-panel" id="{{ det_id }}" hidden>
+        <div class="fare-details-grid">
+          <div class="fare-details-block">
+            <h4>{{ _('flight_segment_out') }}</h4>
+            <table class="fare-details-table">
+              <tr>
+                <td>{{ _('operated_by') }}</td>
+                <td><strong>{{ t.companhia }}</strong>{% if code and code != 'SK' %} ({{ code }}){% endif %}</td>
+              </tr>
+              {% if t.flight_no %}
+              <tr>
+                <td>Voo</td>
+                <td>{{ t.flight_no }}</td>
+              </tr>
+              {% endif %}
+              <tr>
+                <td>{{ _('dep_short') }}</td>
+                <td>
+                  <strong>{{ t.horario or '—' }}</strong>
+                  · {{ t.origem_iata or '' }}
+                  {{ t.origem_cidade or t.origem or booking.origem_cidade }}
+                  {% if booking.data_viagem %}<br><span class="muted">{{ booking.data_viagem }}</span>{% endif %}
+                </td>
+              </tr>
+              <tr>
+                <td>Chegada</td>
+                <td>
+                  <strong>{{ t.horario_chegada or '—' }}</strong>{% if t.next_day %} (+1){% endif %}
+                  · {{ t.destino_iata or '' }}
+                  {{ t.destino_cidade or t.destino or booking.destino_cidade }}
+                </td>
+              </tr>
+              <tr>
+                <td>{{ _('duration') }}</td>
+                <td>{{ t.duracao or '—' }}</td>
+              </tr>
+              <tr>
+                <td>Escalas</td>
+                <td>
+                  {{ t.stops_label or '—' }}
+                  {% if t.via %} (via {{ t.via }}){% endif %}
+                </td>
+              </tr>
+              {% if t.aircraft %}
+              <tr>
+                <td>{{ _('aircraft_label') }}</td>
+                <td>{{ t.aircraft }}</td>
+              </tr>
+              {% endif %}
+              <tr>
+                <td>{{ _('class_word') }}</td>
+                <td>{{ t.classe or booking.classe_nome }}</td>
+              </tr>
+            </table>
+          </div>
+          <div class="fare-details-block">
+            <h4>{{ _('baggage_cabin') }} / {{ _('baggage_hold') }}</h4>
+            <table class="fare-details-table">
+              <tr>
+                <td>{{ _('baggage_cabin') }}</td>
+                <td>{{ t.bagagem_cabine or 'Conforme tarifa' }}</td>
+              </tr>
+              <tr>
+                <td>{{ _('baggage_hold') }}</td>
+                <td>{{ t.bagagem or 'Conforme tarifa' }}</td>
+              </tr>
+              {% if t.seats_left %}
+              <tr>
+                <td>{{ _('seats_remaining') }}</td>
+                <td><strong>{{ t.seats_left }}</strong></td>
+              </tr>
+              {% endif %}
+              {% if t.trip_label %}
+              <tr>
+                <td>Tipo</td>
+                <td>{{ t.trip_label }}</td>
+              </tr>
+              {% endif %}
+              {% if t.preco and t.preco > 0 %}
+              <tr>
+                <td>Preço / adulto</td>
+                <td><strong>{{ t.preco|money(t.moeda) }}</strong></td>
+              </tr>
+              {% if t.markup_percent and t.preco_base is defined and t.preco_base %}
+              <tr>
+                <td>{{ _('fare_supplier') }}</td>
+                <td>{{ t.preco_base|money(t.moeda) }}</td>
+              </tr>
+              <tr>
+                <td>{{ _('agency_markup') }}</td>
+                <td>{{ t.markup_percent }}% {% if t.markup_amount %}(+{{ t.markup_amount|money(t.moeda) }}){% endif %}</td>
+              </tr>
+              {% endif %}
+              {% endif %}
+            </table>
+            {% if t.detalhes %}
+            <p class="fare-details-note">{{ t.detalhes }}</p>
+            {% endif %}
+            {% if t.segments %}
+            <h4 style="margin-top:0.85rem">Segmentos ({{ t.companhia }})</h4>
+            <table class="fare-details-table">
+              {% for s in t.segments %}
+              <tr>
+                <td>{{ s.voo }}</td>
+                <td>
+                  {{ s.de }} {{ s.partida }} → {{ s.para }} {{ s.chegada }}
+                  {% if s.companhia %}<br><span class="muted">{{ s.companhia }}</span>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </table>
+            {% endif %}
+            {% if round_trip and booking.data_regresso and is_flight %}
+            <p class="fare-details-note">
+              <strong>{{ _('flight_segment_ret') }}:</strong>
+              data {{ booking.data_regresso }} · mesma companhia / condições da tarifa seleccionada.
+            </p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty">{{ _('no_options') }}</div>
+    {% endfor %}
+    </div>
+
+    <div class="page-actions">
+      <a class="btn btn-ghost" href="{{ url_for('reserva_pesquisa') }}">{{ _('btn_back') }}</a>
+      <button class="btn btn-primary" type="submit">{{ _('btn_continue') }}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+  .fare-page { max-width: 100%; }
+  .fare-summary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    background: #f9f0f4;
+    border: 1px solid #e8d0da;
+    border-left: 4px solid var(--navy, #5c0a2c);
+  }
+  .fare-summary-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .fare-summary-main strong {
+    color: var(--navy, #5c0a2c);
+    font-size: 1.05rem;
+  }
+  .fare-summary-main span,
+  .fare-summary-meta span {
+    font-size: 0.88rem;
+    color: #666;
+  }
+  .fare-summary-meta {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .fare-summary-meta strong { color: var(--navy, #5c0a2c); }
+  .fare-source {
+    margin: -0.5rem 0 1.1rem;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.86rem;
+    line-height: 1.45;
+    border-radius: 2px;
+  }
+  .fare-source--live {
+    background: #ecfdf5;
+    color: #065f46;
+    border-left: 3px solid #0f766e;
+  }
+  .fare-source--market {
+    background: #fffbeb;
+    color: #92400e;
+    border-left: 3px solid #d97706;
+  }
+  .fare-markup-note {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #5c0a2c;
+    opacity: 0.85;
+  }
+  .fare-tag--live {
+    background: #d1fae5 !important;
+    color: #065f46 !important;
+    border-color: #6ee7b7 !important;
+  }
+  .fare-mode-badge {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    background: #5c0a2c;
+    color: #fff;
+    width: fit-content;
+  }
+  .fare-mode-badge--cheap {
+    background: #0d7a5f;
+  }
+
+  .fare-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: min(72vh, 780px);
+    overflow: auto;
+    padding: 2px 4px 8px 2px;
+  }
+
+  .fare-card-wrap {
+    border: 1px solid #e0e0e0;
+    border-left: 5px solid var(--brand, #5c0a2c);
+    background: #fff;
+    transition: box-shadow 0.15s, border-color 0.15s;
+  }
+  .fare-card-wrap:hover {
+    box-shadow: 0 8px 28px rgba(92, 10, 44, 0.1);
+  }
+  .fare-card-wrap:has(.fare-radio:checked) {
+    border-color: var(--navy, #5c0a2c);
+    box-shadow: 0 0 0 2px rgba(92, 10, 44, 0.18);
+  }
+  .fare-card-wrap:has(.is-cheapest) {
+    border-left-color: #b8965a;
+  }
+
+  /* —— Cartão de tarifa estruturado —— */
+  .fare-card {
+    display: grid;
+    grid-template-columns: minmax(200px, 240px) 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    margin: 0;
+    padding: 0;
+    align-items: stretch;
+  }
+  .fare-card.is-cheapest {
+    border-left-color: transparent;
+  }
+
+  /* —— Botão mostrar detalhes —— */
+  .fare-details-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    border: none;
+    border-top: 1px solid #eee;
+    background: #faf8f9;
+    color: var(--navy, #5c0a2c);
+    font-family: inherit;
+    font-size: 0.88rem;
+    font-weight: 700;
+    padding: 0.7rem 1rem;
+    cursor: pointer;
+    text-align: left;
+    letter-spacing: 0.01em;
+    transition: background 0.15s, color 0.15s;
+  }
+  .fare-details-toggle:hover {
+    background: #f3eef1;
+  }
+  .fare-details-toggle.is-open {
+    background: #f3eef1;
+    border-bottom: 1px solid #eee;
+  }
+  .fare-details-chevron {
+    font-size: 0.85rem;
+    transition: transform 0.2s;
+    opacity: 0.7;
+  }
+  .fare-details-toggle.is-open .fare-details-chevron {
+    transform: rotate(180deg);
+  }
+  .fare-details-panel {
+    padding: 0 1rem 1rem;
+    background: #fcfbfc;
+    border-top: none;
+  }
+  .fare-details-panel[hidden] {
+    display: none !important;
+  }
+  .fare-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 1.5rem;
+    padding-top: 0.85rem;
+  }
+  @media (max-width: 700px) {
+    .fare-details-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .fare-details-block h4 {
+    margin: 0 0 0.55rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--navy, #5c0a2c);
+  }
+  .fare-details-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  .fare-details-table td {
+    padding: 0.4rem 0.35rem 0.4rem 0;
+    vertical-align: top;
+    border-bottom: 1px solid #f0ebea;
+  }
+  .fare-details-table td:first-child {
+    width: 42%;
+    color: #666;
+    font-weight: 600;
+  }
+  .fare-details-table td:last-child {
+    color: #222;
+  }
+  .fare-details-table .muted {
+    color: #888;
+    font-size: 0.82rem;
+  }
+  .fare-details-note {
+    margin: 0.75rem 0 0;
+    font-size: 0.84rem;
+    color: #555;
+    line-height: 1.45;
+  }
+  .fare-radio {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .fare-brand {
+    grid-row: 1 / 2;
+    grid-column: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 12px;
+    border-right: 1px solid #eee;
+    background: #fff;
+    min-width: 0;
+    justify-content: center;
+  }
+  .fare-brand-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+  .fare-logo-wrap {
+    width: 112px;
+    height: 76px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .fare-logo-img {
+    width: 112px !important;
+    height: 76px !important;
+    max-width: 112px;
+    max-height: 76px;
+    object-fit: contain;
+    object-position: center;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 2px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    display: block;
+  }
+  .fare-logo {
+    width: 112px;
+    height: 76px;
+    border-radius: 8px;
+    background: var(--brand, #5c0a2c);
+    color: #fff;
+    font-weight: 800;
+    font-size: 1.15rem;
+    letter-spacing: 0.04em;
+    display: grid;
+    place-items: center;
+    font-family: var(--font-display, Inter, sans-serif);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+  .fare-logo--sky {
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    padding: 4px;
+    overflow: hidden;
+  }
+  .fare-logo--sky img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .fare-airline {
+    flex: 1;
+    min-width: 0;
+  }
+  .fare-airline strong {
+    display: block;
+    font-size: 1rem;
+    color: #111;
+    line-height: 1.25;
+    font-family: var(--font-display, Inter, sans-serif);
+  }
+  .fare-flight-no {
+    display: block;
+    font-size: 0.82rem;
+    color: #555;
+    margin-top: 3px;
+    font-weight: 600;
+  }
+  .fare-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .fare-tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 2px 7px;
+    background: #f0e6ea;
+    color: var(--navy, #5c0a2c);
+  }
+  .fare-tag--best {
+    background: #b8965a;
+    color: #1a1200;
+  }
+  .fare-tag--muted {
+    background: #eee;
+    color: #555;
+  }
+
+  /* Timeline */
+  .fare-itin {
+    grid-row: 1;
+    grid-column: 2;
+    display: grid;
+    grid-template-columns: 1fr 1.4fr 1fr;
+    gap: 8px;
+    align-items: center;
+    padding: 16px 18px 8px;
+    min-width: 0;
+  }
+  .fare-time-block {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .fare-time-block--arr { text-align: right; align-items: flex-end; }
+  .fare-time {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #1a1a1a;
+    font-family: var(--font-display, Inter, sans-serif);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .fare-plus1 {
+    font-size: 0.7rem;
+    color: #b54708;
+    font-weight: 800;
+    margin-left: 2px;
+  }
+  .fare-iata {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--navy, #5c0a2c);
+    margin-top: 4px;
+  }
+  .fare-city {
+    font-size: 0.75rem;
+    color: #777;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+  }
+  .fare-path {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0 4px;
+  }
+  .fare-duration {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .fare-line {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 160px;
+    gap: 0;
+  }
+  .fare-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--navy, #5c0a2c);
+    flex-shrink: 0;
+  }
+  .fare-dash {
+    flex: 1;
+    height: 2px;
+    background: linear-gradient(90deg, #c4a0ad, #ddd);
+  }
+  .fare-plane {
+    font-size: 0.85rem;
+    color: var(--navy, #5c0a2c);
+    padding: 0 4px;
+  }
+  .fare-stops {
+    font-size: 0.72rem;
+    color: #666;
+    text-align: center;
+  }
+  .fare-itin-alt {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .fare-itin-alt strong { color: #222; }
+  .fare-itin-alt span { font-size: 0.85rem; color: #666; }
+
+  .fare-meta {
+    grid-row: 2;
+    grid-column: 1 / 3;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    padding: 8px 16px 14px;
+    border-top: 1px dashed #eee;
+    font-size: 0.78rem;
+    color: #555;
+    align-items: center;
+  }
+  .fare-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .fare-meta i { font-style: normal; opacity: 0.85; }
+  .fare-seats { font-weight: 700; color: #0d7a5f; }
+  .fare-seats.is-low { color: #b54708; }
+
+  .fare-price-col {
+    grid-row: 1 / 3;
+    grid-column: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 6px;
+    padding: 14px 16px;
+    border-left: 1px solid #f0f0f0;
+    background: linear-gradient(180deg, #faf8f9 0%, #fff 60%);
+    min-width: 128px;
+  }
+  .fare-amount {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--navy, #5c0a2c);
+    font-family: var(--font-display, Inter, sans-serif);
+    white-space: nowrap;
+  }
+  .fare-amount--quote { font-size: 1rem; }
+  .fare-per {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #888;
+    text-align: right;
+  }
+  .fare-select-hint {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #fff;
+    background: var(--navy, #5c0a2c);
+    padding: 5px 10px;
+    margin-top: 4px;
+  }
+  .fare-card:has(.fare-radio:checked) .fare-select-hint {
+    background: #0d7a5f;
+  }
+  .fare-card:has(.fare-radio:checked) .fare-select-hint::after {
+    content: " ✓";
+  }
+  .fare-rank {
+    font-size: 0.7rem;
+    color: #aaa;
+    font-weight: 600;
+  }
+
+  .fare-card--quote .fare-logo { background: #5c6b7a; }
+  .fare-card--package .fare-logo { background: #0d7a5f; }
+
+</style>
+<script>
+/* Fallback de logos de companhias (se um CDN falhar, tenta o seguinte) */
+window.__fareLogoFallback = function (img) {
+  try {
+    var list = (img.getAttribute("data-fallbacks") || "").split("|").filter(Boolean);
+    var i = parseInt(img.getAttribute("data-fallback-i") || "0", 10) + 1;
+    if (i < list.length) {
+      img.setAttribute("data-fallback-i", String(i));
+      img.src = list[i];
+      return;
+    }
+  } catch (e) {}
+  img.style.display = "none";
+  var fb = img.nextElementSibling;
+  if (fb) fb.style.display = "grid";
+};
+
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll(".fare-details-toggle").forEach(function (btn) {
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var id = btn.getAttribute("data-target");
+      var panel = id ? document.getElementById(id) : null;
+      if (!panel) return;
+      var open = panel.hasAttribute("hidden");
+      if (open) {
+        panel.removeAttribute("hidden");
+        btn.classList.add("is-open");
+        btn.setAttribute("aria-expanded", "true");
+        var hide = btn.getAttribute("data-hide") || "Ocultar detalhes do voo";
+        var textEl = btn.querySelector(".fare-details-toggle-text");
+        if (textEl) textEl.textContent = hide;
+      } else {
+        panel.setAttribute("hidden", "");
+        btn.classList.remove("is-open");
+        btn.setAttribute("aria-expanded", "false");
+        var show = btn.getAttribute("data-show") || "Mostrar detalhes do voo";
+        var textEl2 = btn.querySelector(".fare-details-toggle-text");
+        if (textEl2) textEl2.textContent = show;
+      }
+    });
+  });
+});
+</script>
+<style>
+  @media (max-width: 820px) {
+    .fare-card {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto;
+      border-left-width: 5px;
+    }
+    .fare-brand {
+      grid-row: auto;
+      grid-column: auto;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      border-right: none;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .fare-airline { flex: 1; min-width: 120px; }
+    .fare-itin {
+      grid-row: auto;
+      grid-column: auto;
+      grid-template-columns: 1fr 1.2fr 1fr;
+      padding: 12px;
+    }
+    .fare-meta {
+      grid-row: auto;
+      grid-column: auto;
+      border-top: 1px dashed #eee;
+    }
+    .fare-price-col {
+      grid-row: auto;
+      grid-column: auto;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      border-left: none;
+      border-top: 1px solid #f0f0f0;
+      min-width: 0;
+      width: 100%;
+    }
+    .fare-per { text-align: left; display: inline; margin-left: 4px; }
+  }
+</style>
+{% endblock %}

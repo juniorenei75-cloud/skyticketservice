@@ -1,0 +1,39 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Clientes{% endblock %}
+
+{% block content %}
+<div class="admin-top">
+  <h1>Clientes</h1>
+</div>
+
+<div class="table-wrap">
+  <table class="data">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Nome</th>
+        <th>E-mail</th>
+        <th>Telefone</th>
+        <th>Documento</th>
+        <th>Reservas</th>
+        <th>Registo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in clientes %}
+      <tr>
+        <td>{{ c.id }}</td>
+        <td><strong>{{ c.nome }}</strong></td>
+        <td>{{ c.email }}</td>
+        <td>{{ c.telefone or '—' }}</td>
+        <td>{{ c.documento or '—' }}</td>
+        <td>{{ c.n_reservas }}</td>
+        <td>{{ c.criado_em }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align:center;color:var(--muted)">Ainda sem clientes.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

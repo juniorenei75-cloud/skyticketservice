@@ -1,0 +1,48 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Voos{% endblock %}
+
+{% block content %}
+<div class="admin-top">
+  <h1>Voos / Bilhetes</h1>
+  <a class="btn btn-primary btn-sm" href="{{ url_for('admin_voo_novo') }}">+ Novo voo</a>
+</div>
+
+<div class="table-wrap">
+  <table class="data">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Rota</th>
+        <th>Companhia</th>
+        <th>Classe</th>
+        <th>Preço</th>
+        <th>Estado</th>
+        <th>Acções</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in voos %}
+      <tr>
+        <td>{{ v.id }}</td>
+        <td><strong>{{ v.origem }} → {{ v.destino }}</strong></td>
+        <td>{{ v.companhia }}</td>
+        <td>{{ v.classe }}</td>
+        <td>{{ v.preco|money(v.moeda) }}</td>
+        <td>
+          {% if v.ativo %}<span class="badge badge-success">activo</span>
+          {% else %}<span class="badge badge-muted">inactivo</span>{% endif %}
+        </td>
+        <td class="actions-row">
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('admin_voo_editar', vid=v.id) }}">Editar</a>
+          <form class="inline-form" method="post" action="{{ url_for('admin_voo_apagar', vid=v.id) }}" data-confirm="Apagar este voo?">
+            <button class="btn btn-danger btn-sm" type="submit">Apagar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align:center;color:var(--muted)">Sem voos.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

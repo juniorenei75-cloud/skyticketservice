@@ -1,0 +1,186 @@
+{% extends "pages/base_page.html" %}
+{% block step_label %}{{ _('booking_done') }}{% endblock %}
+
+{% block content %}
+<div class="page-panel success-page">
+  <div class="success-hero">
+    <div class="success-check" aria-hidden="true">✓</div>
+    <h1>{{ _('success_title') }}</h1>
+    <p class="lead">
+      {{ _('thanks') }}, <strong>{{ reserva.nome }}</strong>.
+      {{ _('success_lead') }}
+    </p>
+    <div class="success-code" title="{{ _('label_status') }}">
+      {{ reserva.codigo }}
+    </div>
+    <p class="success-code-hint">{{ _('booking_ref_hint') }}</p>
+  </div>
+
+  <div class="summary-chip success-details">
+    <div class="success-row">
+      <span>{{ _('email')|replace(' *','') }}</span>
+      <strong>{{ reserva.email }}</strong>
+    </div>
+    {% if email_ok %}
+    <p class="success-mail ok">{{ _('email_sent') }}</p>
+    {% else %}
+    <p class="success-mail warn">📧 {{ email_msg }}</p>
+    {% endif %}
+    {% if wa_notif and wa_notif.auto_sent %}
+    <p class="success-mail ok">📱 A agência foi notificada de imediato no WhatsApp.</p>
+    {% elif wa_notif and wa_notif.admin_email_ok %}
+    <p class="success-mail ok">📧 A agência recebeu cópia da reserva por e-mail.</p>
+    {% endif %}
+    {% if pagamento %}
+    <div class="success-row">
+      <span>{{ _('label_payment') }}</span>
+      <strong>{{ pagamento }}</strong>
+    </div>
+    {% endif %}
+    <div class="success-row">
+      <span>{{ _('label_route') }}</span>
+      <strong>
+        {{ reserva.origem_cidade }}, {{ reserva.origem_pais }}
+        → {{ reserva.destino_cidade }}, {{ reserva.destino_pais }}
+      </strong>
+    </div>
+    <div class="success-row">
+      <span>{{ _('dep_short') }}</span>
+      <strong>
+        {{ reserva.data_viagem }}
+        {% if reserva.data_regresso %} · {{ _('ret_short') }} {{ reserva.data_regresso }}{% endif %}
+      </strong>
+    </div>
+    <div class="success-row">
+      <span>{{ _('label_status') }}</span>
+      <strong><span class="badge badge-success">{{ reserva.status }}</span></strong>
+    </div>
+  </div>
+
+  {% if wa_notif and (wa_notif.qr or wa_notif.link) %}
+  <div class="wa-qr-box">
+    <p class="wa-qr-label">Whatsapp</p>
+    {% if wa_notif.qr %}
+    <img class="wa-qr-img"
+         src="{{ wa_notif.qr }}"
+         alt="Whatsapp"
+         width="220"
+         height="220">
+    {% endif %}
+    {% if wa_notif.link %}
+    <a class="btn wa-send-btn" href="{{ wa_notif.link }}" target="_blank" rel="noopener">
+      Enviar mensagem
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="page-actions success-actions">
+    <a class="btn btn-primary" href="{{ url_for('reserva_bilhete', codigo=reserva.codigo) }}" target="_blank">
+      {{ _('btn_open_ticket') }}
+    </a>
+    <a class="btn btn-ghost" href="{{ url_for('reserva_pesquisa') }}">{{ _('btn_new_search') }}</a>
+    <a class="btn btn-ghost" href="{{ url_for('index') }}">{{ _('btn_home') }}</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+  .success-page { text-align: center; }
+  .success-hero { margin-bottom: 0.5rem; }
+  .success-check {
+    width: 3.25rem;
+    height: 3.25rem;
+    margin: 0 auto 0.75rem;
+    border-radius: 50%;
+    background: #0f766e;
+    color: #fff;
+    font-size: 1.75rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .success-code {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: #5c0a2c;
+    background: #f9f0f4;
+    display: inline-block;
+    padding: 0.7rem 1.35rem;
+    border: 1px solid #e8d0da;
+    margin: 0.75rem 0 0.35rem;
+  }
+  .success-code-hint {
+    margin: 0 0 1rem;
+    font-size: 0.85rem;
+    color: #777;
+  }
+  .success-details {
+    text-align: left;
+    margin-top: 0.5rem;
+  }
+  .success-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.35rem 1rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid #eee;
+    font-size: 0.92rem;
+  }
+  .success-row:last-of-type { border-bottom: none; }
+  .success-row span { color: #777; }
+  .success-mail {
+    margin: 0.55rem 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .success-mail.ok { color: #0f766e; }
+  .success-mail.warn { color: #b45309; }
+  .success-actions {
+    justify-content: center;
+    border: none;
+    flex-wrap: wrap;
+  }
+  .wa-qr-box {
+    margin: 1.25rem auto 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .wa-qr-label {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #128c7e;
+    letter-spacing: 0.02em;
+  }
+  .wa-qr-img {
+    display: block;
+    width: 220px;
+    height: 220px;
+    object-fit: contain;
+    background: #fff;
+    border: 1px solid #e5e0dc;
+    padding: 8px;
+  }
+  .wa-send-btn {
+    background: #25d366 !important;
+    border: 1px solid #25d366 !important;
+    color: #fff !important;
+    font-weight: 700;
+    min-width: 180px;
+    text-align: center;
+  }
+  .wa-send-btn:hover { filter: brightness(0.95); }
+  @media (max-width: 560px) {
+    .success-actions .btn { width: 100%; }
+    .success-row { flex-direction: column; }
+  }
+</style>
+{% endblock %}

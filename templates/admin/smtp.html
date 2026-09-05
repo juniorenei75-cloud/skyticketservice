@@ -1,0 +1,167 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}E-mail / SMTP{% endblock %}
+
+{% block content %}
+<div class="admin-top">
+  <div>
+    <h1>E-mail e e-ticket</h1>
+    <p class="card-meta" style="margin:0">
+      Envia a confirmação e o bilhete electrónico para o e-mail do passageiro após o pagamento.
+    </p>
+  </div>
+</div>
+
+<div class="form-card" style="max-width:760px;margin-bottom:1.25rem">
+  <h2 style="margin-top:0;color:var(--navy);font-size:1.1rem">Estado</h2>
+  {% if ready %}
+  <p><span class="badge badge-success">Pronto a enviar ({{ cfg.provider|upper }})</span></p>
+  {% else %}
+  <p><span class="badge" style="background:#fef3c7;color:#92400e">Ainda falta configurar</span></p>
+  <p class="card-meta">{{ status_msg }}</p>
+  {% endif %}
+  <p class="card-meta" style="margin:0">
+    Modo: <strong>{{ cfg.provider or 'smtp' }}</strong> ·
+    Remetente: <strong>{{ cfg.mail_from or cfg.user or '—' }}</strong>
+  </p>
+</div>
+
+<div class="form-card" style="max-width:760px;margin-bottom:1.25rem;background:#fef3c7;border:1px solid #fcd34d">
+  <h2 style="margin-top:0;color:var(--navy);font-size:1.1rem">⚠ Se viu «Connection unexpectedly closed»</h2>
+  <p style="margin:0 0 .75rem;color:var(--muted);line-height:1.6">
+    A sua rede/operadora está a <strong>bloquear o SMTP do Gmail</strong> (portas 587/465).
+    A senha de aplicação está correcta, mas o servidor fecha a ligação.
+  </p>
+  <p style="margin:0;color:var(--muted);line-height:1.6">
+    <strong>Solução recomendada:</strong> use o modo <strong>Brevo (API HTTPS)</strong> abaixo
+    — grátis (300 e-mails/dia), funciona pela porta 443 como um site normal.
+  </p>
+</div>
+
+<div class="form-card" style="max-width:760px;margin-bottom:1.25rem;background:#f0f9ff;border:1px solid #bae6fd">
+  <h2 style="margin-top:0;color:var(--navy);font-size:1.1rem">Como activar Brevo (5 minutos)</h2>
+  <ol style="color:var(--muted);line-height:1.75;padding-left:1.2rem;margin:0">
+    <li>Crie conta grátis em
+      <a href="https://app.brevo.com/account/register" target="_blank" rel="noopener">app.brevo.com</a>
+      (pode usar o e-mail da agência).</li>
+    <li>Confirme o e-mail da conta Brevo.</li>
+    <li>Vá a <strong>SMTP &amp; API → API keys</strong> →
+      <a href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noopener">criar chave API</a>.</li>
+    <li>Em <strong>Senders</strong>, adicione e verifique
+      <code>skyticketservicee@gmail.com</code> (ou o e-mail que quiser como remetente).</li>
+    <li>Abaixo: modo = <strong>Brevo</strong>, cole a API key, guarde e teste.</li>
+  </ol>
+</div>
+
+<form method="post" class="form-card" style="max-width:760px">
+  <input type="hidden" name="action" value="save">
+
+  <div class="form-group">
+    <label>
+      <input type="checkbox" name="enabled" value="1" {% if cfg.enabled %}checked{% endif %}>
+      Activar envio de e-mails (confirmação + e-ticket)
+    </label>
+  </div>
+
+  <div class="form-group">
+    <label for="provider">Modo de envio *</label>
+    <select id="provider" name="provider" required>
+      <option value="brevo" {% if cfg.provider == 'brevo' %}selected{% endif %}>
+        Brevo (API HTTPS) — recomendado se Gmail SMTP falhar
+      </option>
+      <option value="smtp" {% if cfg.provider != 'brevo' %}selected{% endif %}>
+        SMTP Gmail / outro servidor
+      </option>
+    </select>
+  </div>
+
+  <h3 style="color:var(--navy);font-size:1.05rem">Brevo (API)</h3>
+  <div class="form-group">
+    <label for="brevo_api_key">Chave API Brevo</label>
+    <input id="brevo_api_key" name="brevo_api_key" type="password"
+           value=""
+           placeholder="{% if has_brevo %}•••••••• (já guardada — deixe vazio para manter){% else %}xkeysib-…{% endif %}"
+           autocomplete="new-password">
+  </div>
+
+  <h3 style="color:var(--navy);font-size:1.05rem">Remetente (comum aos dois modos)</h3>
+  <div class="form-grid">
+    <div class="form-group">
+      <label for="mail_from">E-mail remetente (From)</label>
+      <input id="mail_from" name="mail_from" type="email"
+             value="{{ cfg.mail_from or cfg.user or 'skyticketservicee@gmail.com' }}">
+    </div>
+    <div class="form-group">
+      <label for="from_name">Nome do remetente</label>
+      <input id="from_name" name="from_name"
+             value="{{ cfg.from_name or 'SKYTICKETservice' }}">
+    </div>
+  </div>
+
+  <div class="form-grid">
+    <div class="form-group">
+      <label for="admin_email">E-mail da agência (cópia BCC)</label>
+      <input id="admin_email" name="admin_email" type="email"
+             value="{{ cfg.admin_email or '' }}">
+    </div>
+    <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:.35rem">
+      <label>
+        <input type="checkbox" name="bcc_admin" value="1" {% if cfg.bcc_admin %}checked{% endif %}>
+        Enviar cópia BCC para a agência
+      </label>
+    </div>
+  </div>
+
+  <h3 style="color:var(--navy);font-size:1.05rem">SMTP (opcional — se a rede permitir)</h3>
+  <div class="form-grid">
+    <div class="form-group">
+      <label for="host">Servidor SMTP</label>
+      <input id="host" name="host" value="{{ cfg.host or 'smtp.gmail.com' }}">
+    </div>
+    <div class="form-group">
+      <label for="port">Porta</label>
+      <input id="port" name="port" type="number" value="{{ cfg.port or 587 }}">
+    </div>
+  </div>
+  <div class="form-grid">
+    <div class="form-group">
+      <label for="user">Utilizador SMTP</label>
+      <input id="user" name="user" type="email"
+             value="{{ cfg.user or '' }}">
+    </div>
+    <div class="form-group">
+      <label for="password">Palavra-passe de aplicação Gmail</label>
+      <input id="password" name="password" type="password"
+             value=""
+             placeholder="{% if has_password %}•••••••• (já guardada){% else %}App password{% endif %}"
+             autocomplete="new-password">
+    </div>
+  </div>
+  <div class="form-group">
+    <label>
+      <input type="checkbox" name="use_tls" value="1" {% if cfg.use_tls %}checked{% endif %}>
+      STARTTLS (porta 587)
+    </label>
+  </div>
+  <div class="form-group">
+    <label>
+      <input type="checkbox" name="use_ssl" value="1" {% if cfg.use_ssl %}checked{% endif %}>
+      SSL (porta 465)
+    </label>
+  </div>
+
+  <button class="btn btn-primary" type="submit">Guardar configuração</button>
+</form>
+
+<form method="post" class="form-card" style="max-width:760px;margin-top:1.25rem">
+  <input type="hidden" name="action" value="test">
+  <h3 style="margin-top:0;color:var(--navy);font-size:1.05rem">Enviar e-mail de teste</h3>
+  <p class="card-meta">Depois de guardar o modo Brevo + API key, teste aqui.</p>
+  <div class="form-group">
+    <label for="test_email">Enviar para</label>
+    <input id="test_email" name="test_email" type="email" required
+           value="{{ cfg.mail_from or cfg.user or '' }}"
+           placeholder="seu@email.com">
+  </div>
+  <button class="btn btn-ghost" type="submit">✉ Enviar e-mail de teste</button>
+</form>
+{% endblock %}

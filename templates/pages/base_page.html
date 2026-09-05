@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="{{ lang or 'pt' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>{{ page_title }} · {{ agencia }}</title>
+  <meta name="description" content="{{ site.descricao }}">
+  <meta name="theme-color" content="#5c0a2c">
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='img/logo.jpg') }}">
+  <script type="application/json" id="skyticket-paises-json">{{ paises_mundo|tojson }}</script>
+  <script type="application/json" id="skyticket-cidades-json">{{ cidades_por_pais|tojson }}</script>
+  <script type="application/json" id="skyticket-phone-json">{{ phone_countries|tojson }}</script>
+  <script>
+    window.SKYTICKET_LANG = {{ lang|tojson }};
+    window.SKYTICKET_I18N = {{ js_i18n|tojson }};
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/airline.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="page-body qr-site {{ page_class }}">
+  <div class="qr-topbar">
+    <div class="container">
+      <div class="qr-topbar-right">
+        <span style="padding:0 12px;line-height:40px;color:#666;font-size:12px">{% block step_label %}{% endblock %}</span>
+        {% for L in languages %}
+        <a href="{{ url_for('set_language', code=L.code) }}"
+           style="{% if lang == L.code %}color:#5c0a2c;font-weight:700{% endif %}">{{ L.code|upper }}</a>
+        {% endfor %}
+        <a href="{{ url_for('index') }}">{{ _('nav_home') }}</a>
+        <a href="{{ url_for('contacto') }}">{{ _('nav_help') }}</a>
+      </div>
+    </div>
+  </div>
+
+  <header class="qr-header">
+    <div class="container qr-header-inner">
+      <a class="qr-brand" href="{{ url_for('index') }}">
+        <img class="qr-brand-logo"
+             src="{{ url_for('static', filename='img/logo.jpg') }}"
+             alt="SKYTICKETservice" width="56" height="56">
+        <span class="qr-brand-text">
+          <strong>SKYTICKET<span>service</span></strong>
+          <small>{{ slogan }}</small>
+        </span>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Menu">☰ Menu</button>
+      <ul class="qr-nav nav-links">
+        <li><a href="{{ url_for('reserva_pesquisa') }}">{{ _('nav_book') }}</a></li>
+        <li><a href="{{ url_for('sobre') }}">{{ _('nav_experience') }}</a></li>
+        <li><a href="{{ url_for('pacotes') }}">{{ _('nav_club') }}</a></li>
+        <li><a href="{{ url_for('destinos') }}">{{ _('nav_destinations') }}</a></li>
+        <li><a href="{{ url_for('voos') }}">{{ _('nav_deals') }}</a></li>
+        <li><a href="{{ url_for('contacto') }}">{{ _('nav_help') }}</a></li>
+        <li class="qr-nav-cta"><a href="{{ url_for('reserva_pesquisa') }}">{{ _('nav_book_flight') }}</a></li>
+      </ul>
+    </div>
+  </header>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flashes" style="width:min(960px,94%);margin:12px auto 0">
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <main class="page-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="qr-footer" style="padding-top:24px">
+    <div class="container">
+      <div class="qr-footer-bottom" style="border:none;padding-top:0">
+        <span>© {{ ano }} {{ agencia }}</span>
+        <span>{{ contacto.telefone }} · {{ contacto.email }}</span>
+      </div>
+    </div>
+  </footer>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

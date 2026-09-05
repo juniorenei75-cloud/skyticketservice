@@ -1,0 +1,59 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ 'Editar' if voo else 'Novo' }} voo{% endblock %}
+
+{% block content %}
+<div class="admin-top">
+  <h1>{{ 'Editar voo' if voo else 'Novo voo' }}</h1>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('admin_voos') }}">← Voltar</a>
+</div>
+
+<form method="post" class="form-card" style="max-width:720px">
+  <div class="form-grid">
+    <div class="form-group">
+      <label for="origem">Origem *</label>
+      <input id="origem" name="origem" required value="{{ voo.origem if voo else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="destino">Destino *</label>
+      <input id="destino" name="destino" required value="{{ voo.destino if voo else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="companhia">Companhia *</label>
+      <input id="companhia" name="companhia" required value="{{ voo.companhia if voo else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="duracao">Duração</label>
+      <input id="duracao" name="duracao" placeholder="2h 00m" value="{{ voo.duracao if voo else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="preco">Preço</label>
+      <input id="preco" type="number" step="0.01" name="preco" value="{{ voo.preco if voo else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="moeda">Moeda</label>
+      <select id="moeda" name="moeda">
+        {% set m = voo.moeda if voo else 'MZN' %}
+        <option value="MZN" {% if m == 'MZN' %}selected{% endif %}>MZN</option>
+        <option value="USD" {% if m == 'USD' %}selected{% endif %}>USD</option>
+        <option value="EUR" {% if m == 'EUR' %}selected{% endif %}>EUR</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="classe">Classe</label>
+      <select id="classe" name="classe">
+        {% set c = voo.classe if voo else 'Económica' %}
+        <option value="Económica" {% if c == 'Económica' %}selected{% endif %}>Económica</option>
+        <option value="Business" {% if c == 'Business' %}selected{% endif %}>Business</option>
+        <option value="First" {% if c == 'First' %}selected{% endif %}>First</option>
+      </select>
+    </div>
+    <div class="form-group full">
+      <label>
+        <input type="checkbox" name="ativo" value="1" {% if not voo or voo.ativo %}checked{% endif %}>
+        Activo no site
+      </label>
+    </div>
+  </div>
+  <button class="btn btn-primary" type="submit">Guardar</button>
+</form>
+{% endblock %}

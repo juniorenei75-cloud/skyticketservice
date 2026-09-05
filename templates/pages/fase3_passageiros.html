@@ -1,0 +1,494 @@
+{% extends "pages/base_page.html" %}
+{% block step_label %}{{ _('phase') }} 3 {{ _('of') }} 6 · {{ _('passengers') }}{% endblock %}
+
+{% block content %}
+<div class="page-panel pax-page">
+  <h1>{{ _('phase3_title') }}</h1>
+  <p class="lead">{{ _('phase3_lead') }}</p>
+  <p class="pax-airport-note">{{ _('phase3_airport_note') }}</p>
+
+  <div class="summary-chip">
+    <strong>{{ booking.ticket_companhia or booking.ticket_label }}</strong>
+    {% if booking.ticket_flight_no %} · {{ booking.ticket_flight_no }}{% endif %}
+    {% if booking.ticket_horario %} · {{ booking.ticket_horario }}{% if booking.ticket_horario_chegada %}–{{ booking.ticket_horario_chegada }}{% endif %}{% endif %}
+    · {{ booking.classe_nome }}
+    · {{ n_pax }} {{ _('passengers')|lower }}
+    {% if booking.ticket_preco and booking.ticket_preco > 0 %}
+    · <strong>{{ booking.ticket_preco|money(booking.ticket_moeda or 'USD') }}</strong>
+    {% endif %}
+    {% if booking.ticket_live or booking.ticket_fonte in ('duffel','amadeus','kiwi') %}
+    <span class="fare-tag fare-tag--live" style="margin-left:6px">{{ _('live_fare_airline') }}</span>
+    {% endif %}
+  </div>
+
+  {% if pax_error_summary %}
+  <div class="pax-alert" role="alert" id="pax-alert">
+    <div class="pax-alert-icon" aria-hidden="true">!</div>
+    <div class="pax-alert-body">
+      <strong class="pax-alert-title">{{ _('pax_fix_alert_title') }}</strong>
+      <p class="pax-alert-lead">{{ _('pax_form_alert_lead') }}</p>
+      <ul class="pax-alert-list">
+        {% for line in pax_error_summary %}
+        <li>{{ line }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
+  <form method="post" class="pax-form" id="pax-form" novalidate autocomplete="on">
+    {% for p in passageiros_form %}
+    {% set i = loop.index0 %}
+    {% set ferr = (pax_field_errors or {}).get(i, {}) %}
+    <section class="pax-block {% if ferr %}pax-block--has-error{% endif %}"
+             aria-labelledby="pax-title-{{ i }}"
+             {% if ferr %}data-has-error="1"{% endif %}>
+      <header class="pax-block-head">
+        <h2 id="pax-title-{{ i }}">
+          {{ _('passenger_n') }} {{ loop.index }}
+          <span class="badge">{{ p.tipo_pax }}</span>
+          {% if ferr %}<span class="badge badge-warn">{{ ferr|length }}</span>{% endif %}
+        </h2>
+        <p class="pax-block-hint">{{ _('pax_passport_hint') }}</p>
+      </header>
+
+      {# —— 1. Identidade (como no passaporte) —— #}
+      <div class="pax-section">
+        <h3 class="pax-section-title">{{ _('pax_sec_identity') }}</h3>
+        <p class="pax-section-note">{{ _('pax_identity_passport_note') }}</p>
+        <div class="form-grid pax-grid">
+          <div class="form-group {% if ferr.titulo %}is-error{% endif %}">
+            <label for="titulo_{{ i }}">{{ _('pax_title') }}</label>
+            <select id="titulo_{{ i }}" name="titulo_{{ i }}" required
+                    {% if ferr.titulo %}aria-invalid="true"{% endif %}>
+              <option value="">—</option>
+              {% for opt in [
+                ('MR', _('title_mr')),
+                ('MRS', _('title_mrs')),
+                ('MS', _('title_ms')),
+                ('MISS', _('title_miss')),
+                ('MSTR', _('title_mstr')),
+                ('DR', _('title_dr')),
+              ] %}
+              <option value="{{ opt[0] }}" {% if p.titulo == opt[0] %}selected{% endif %}>{{ opt[1] }}</option>
+              {% endfor %}
+            </select>
+            {% if ferr.titulo %}<span class="field-error">{{ ferr.titulo }}</span>{% endif %}
+          </div>
+          <div class="form-group {% if ferr.sexo %}is-error{% endif %}">
+            <label for="sexo_{{ i }}">{{ _('pax_gender') }}</label>
+            <select id="sexo_{{ i }}" name="sexo_{{ i }}" required
+                    {% if ferr.sexo %}aria-invalid="true"{% endif %}>
+              <option value="">—</option>
+              <option value="M" {% if p.sexo == 'M' %}selected{% endif %}>{{ _('gender_m') }}</option>
+              <option value="F" {% if p.sexo == 'F' %}selected{% endif %}>{{ _('gender_f') }}</option>
+            </select>
+            {% if ferr.sexo %}<span class="field-error">{{ ferr.sexo }}</span>{% endif %}
+          </div>
+          <div class="form-group {% if ferr.apelido %}is-error{% endif %}">
+            <label for="apelido_{{ i }}">{{ _('pax_surname') }}</label>
+            <input id="apelido_{{ i }}" name="apelido_{{ i }}" required
+                   autocomplete="family-name"
+                   value="{{ p.apelido or '' }}"
+                   placeholder="{{ _('pax_as_passport') }}"
+                   style="text-transform:uppercase"
+                   {% if ferr.apelido %}aria-invalid="true"{% endif %}>
+            {% if ferr.apelido %}<span class="field-error">{{ ferr.apelido }}</span>{% endif %}
+          </div>
+          <div class="form-group {% if ferr.nomes %}is-error{% endif %}">
+            <label for="nomes_{{ i }}">{{ _('pax_given_names') }}</label>
+            <input id="nomes_{{ i }}" name="nomes_{{ i }}" required
+                   autocomplete="given-name"
+                   value="{{ p.nomes or '' }}"
+                   placeholder="{{ _('pax_as_passport') }}"
+                   style="text-transform:uppercase"
+                   {% if ferr.nomes %}aria-invalid="true"{% endif %}>
+            {% if ferr.nomes %}<span class="field-error">{{ ferr.nomes }}</span>{% endif %}
+          </div>
+          <div class="form-group {% if ferr.nascimento %}is-error{% endif %}">
+            <label for="nascimento_{{ i }}">{{ _('birth_date') }}</label>
+            <input id="nascimento_{{ i }}" type="date" name="nascimento_{{ i }}" required
+                   value="{{ p.nascimento or '' }}"
+                   max="{{ today_iso }}"
+                   {% if ferr.nascimento %}aria-invalid="true"{% endif %}>
+            {% if ferr.nascimento %}<span class="field-error">{{ ferr.nascimento }}</span>{% endif %}
+          </div>
+          <div class="form-group {% if ferr.local_nascimento %}is-error{% endif %}">
+            <label for="local_nascimento_{{ i }}">{{ _('pax_birth_place') }}</label>
+            <input id="local_nascimento_{{ i }}" name="local_nascimento_{{ i }}" required
+                   value="{{ p.local_nascimento or '' }}"
+                   placeholder="{{ _('pax_city_country') }}"
+                   {% if ferr.local_nascimento %}aria-invalid="true"{% endif %}>
+            {% if ferr.local_nascimento %}<span class="field-error">{{ ferr.local_nascimento }}</span>{% endif %}
+          </div>
+          <div class="form-group {% if ferr.nacionalidade %}is-error{% endif %}">
+            <label>{{ _('nationality') }}</label>
+            <div class="country-picker"
+                 data-name="nacionalidade_{{ i }}"
+                 data-value="{{ p.nacionalidade or booking.origem_pais or 'Moçambique' }}"
+                 data-required="1"
+                 data-placeholder="{{ _('nationality') }}"></div>
+            {% if ferr.nacionalidade %}<span class="field-error">{{ ferr.nacionalidade }}</span>{% endif %}
+          </div>
+          <div class="form-group {% if ferr.residencia %}is-error{% endif %}">
+            <label>{{ _('pax_residence') }}</label>
+            <div class="country-picker"
+                 data-name="residencia_{{ i }}"
+                 data-value="{{ p.residencia or p.nacionalidade or booking.origem_pais or 'Moçambique' }}"
+                 data-required="1"
+                 data-placeholder="{{ _('pax_residence') }}"></div>
+            {% if ferr.residencia %}<span class="field-error">{{ ferr.residencia }}</span>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      {# —— 2. Passaporte (único documento aceite) —— #}
+      <div class="pax-section">
+        <h3 class="pax-section-title">{{ _('pax_sec_document') }}</h3>
+        <p class="pax-passport-only">{{ _('pax_passport_only_note') }}</p>
+        <input type="hidden" name="tipo_documento_{{ i }}" value="PASSAPORTE">
+        <div class="form-grid pax-grid">
+          <div class="form-group {% if ferr.documento %}is-error{% endif %}">
+            <label for="documento_{{ i }}">{{ _('pax_passport_number') }}</label>
+            <input id="documento_{{ i }}" name="documento_{{ i }}" required
+                   value="{{ p.documento or '' }}"
+                   placeholder="{{ _('pax_doc_number_ph') }}"
+                   style="text-transform:uppercase"
+                   autocomplete="off"
+                   {% if ferr.documento %}aria-invalid="true"{% endif %}>
+            {% if ferr.documento %}<span class="field-error">{{ ferr.documento }}</span>{% endif %}
+          </div>
+          <div class="form-group {% if ferr.pais_documento %}is-error{% endif %}">
+            <label>{{ _('pax_passport_country') }}</label>
+            <div class="country-picker"
+                 data-name="pais_documento_{{ i }}"
+                 data-value="{{ p.pais_documento or p.nacionalidade or booking.origem_pais or 'Moçambique' }}"
+                 data-required="1"
+                 data-placeholder="{{ _('pax_passport_country') }}"></div>
+            {% if ferr.pais_documento %}<span class="field-error">{{ ferr.pais_documento }}</span>{% endif %}
+          </div>
+          <div class="form-group {% if ferr.doc_emissao %}is-error{% endif %}">
+            <label for="doc_emissao_{{ i }}">{{ _('pax_doc_issue') }}</label>
+            <input id="doc_emissao_{{ i }}" type="date" name="doc_emissao_{{ i }}" required
+                   value="{{ p.doc_emissao or '' }}"
+                   max="{{ today_iso }}"
+                   {% if ferr.doc_emissao %}aria-invalid="true"{% endif %}>
+            {% if ferr.doc_emissao %}<span class="field-error">{{ ferr.doc_emissao }}</span>{% endif %}
+          </div>
+          <div class="form-group {% if ferr.doc_validade %}is-error{% endif %}">
+            <label for="doc_validade_{{ i }}">{{ _('pax_doc_expiry') }}</label>
+            <input id="doc_validade_{{ i }}" type="date" name="doc_validade_{{ i }}" required
+                   value="{{ p.doc_validade or '' }}"
+                   min="{{ today_iso }}"
+                   {% if ferr.doc_validade %}aria-invalid="true"{% endif %}>
+            <span class="field-hint">{{ _('pax_doc_expiry_hint') }}</span>
+            {% if ferr.doc_validade %}<span class="field-error">{{ ferr.doc_validade }}</span>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      {# —— 3. Contacto —— #}
+      <div class="pax-section">
+        <h3 class="pax-section-title">{{ _('pax_sec_contact') }}</h3>
+        <div class="form-grid pax-grid">
+          <div class="form-group full {% if ferr.telefone %}is-error{% endif %}">
+            <label>{{ _('phone') }}</label>
+            <div class="phone-picker"
+                 data-name="telefone_{{ i }}"
+                 data-value="{{ p.telefone or '' }}"
+                 data-default-iso="MZ"
+                 data-required="1"></div>
+            {% if ferr.telefone %}<span class="field-error">{{ ferr.telefone }}</span>{% endif %}
+          </div>
+          <div class="form-group {% if ferr.email %}is-error{% endif %}">
+            <label for="email_{{ i }}">{{ _('email') }}</label>
+            <input id="email_{{ i }}" type="email" name="email_{{ i }}" required
+                   value="{{ p.email or '' }}"
+                   autocomplete="email"
+                   placeholder="nome@email.com"
+                   {% if ferr.email %}aria-invalid="true"{% endif %}>
+            {% if ferr.email %}<span class="field-error">{{ ferr.email }}</span>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      {# —— 4. Emergência e opcionais —— #}
+      <div class="pax-section pax-section--soft">
+        <h3 class="pax-section-title">{{ _('pax_sec_extra') }}</h3>
+        <div class="form-grid pax-grid">
+          <div class="form-group {% if ferr.emergencia_nome %}is-error{% endif %}">
+            <label for="emergencia_nome_{{ i }}">{{ _('pax_emergency_name') }}</label>
+            <input id="emergencia_nome_{{ i }}" name="emergencia_nome_{{ i }}" required
+                   value="{{ p.emergencia_nome or '' }}"
+                   placeholder="{{ _('pax_emergency_name_ph') }}"
+                   {% if ferr.emergencia_nome %}aria-invalid="true"{% endif %}>
+            {% if ferr.emergencia_nome %}<span class="field-error">{{ ferr.emergencia_nome }}</span>{% endif %}
+          </div>
+          <div class="form-group full {% if ferr.emergencia_telefone %}is-error{% endif %}">
+            <label>{{ _('pax_emergency_phone') }}</label>
+            <div class="phone-picker"
+                 data-name="emergencia_telefone_{{ i }}"
+                 data-value="{{ p.emergencia_telefone or '' }}"
+                 data-default-iso="MZ"
+                 data-required="1"></div>
+            {% if ferr.emergencia_telefone %}<span class="field-error">{{ ferr.emergencia_telefone }}</span>{% endif %}
+          </div>
+          <div class="form-group">
+            <label for="ff_numero_{{ i }}">{{ _('pax_ff_number') }}</label>
+            <input id="ff_numero_{{ i }}" name="ff_numero_{{ i }}"
+                   value="{{ p.ff_numero or '' }}"
+                   placeholder="{{ _('pax_optional') }}">
+          </div>
+          <div class="form-group">
+            <label for="ff_companhia_{{ i }}">{{ _('pax_ff_airline') }}</label>
+            <input id="ff_companhia_{{ i }}" name="ff_companhia_{{ i }}"
+                   value="{{ p.ff_companhia or '' }}"
+                   placeholder="{{ _('pax_optional') }}">
+          </div>
+          <div class="form-group full">
+            <label for="necessidades_{{ i }}">{{ _('pax_special') }}</label>
+            <input id="necessidades_{{ i }}" name="necessidades_{{ i }}"
+                   value="{{ p.necessidades or '' }}"
+                   placeholder="{{ _('pax_special_ph') }}">
+          </div>
+        </div>
+      </div>
+    </section>
+    {% endfor %}
+
+    <div class="form-group pax-notes">
+      <label for="observacoes">{{ _('notes') }}</label>
+      <textarea id="observacoes" name="observacoes" rows="3"
+                placeholder="{{ _('pax_notes_ph') }}">{{ booking.observacoes or '' }}</textarea>
+    </div>
+
+    <p class="pax-legal">{{ _('pax_legal') }}</p>
+
+    <div class="page-actions">
+      <a class="btn btn-ghost" href="{{ url_for('reserva_opcoes') }}">{{ _('btn_back') }}</a>
+      <button class="btn btn-primary" type="submit">{{ _('btn_continue') }}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+  .pax-page .lead { margin-bottom: 0.35rem; }
+  .pax-airport-note {
+    margin: 0 0 1.15rem;
+    font-size: 0.9rem;
+    color: #5c0a2c;
+    background: #f9f0f4;
+    border-left: 3px solid #5c0a2c;
+    padding: 0.65rem 0.85rem;
+    line-height: 1.45;
+  }
+  /* Aviso profissional — dados preservados */
+  .pax-alert {
+    display: flex;
+    gap: 0.9rem;
+    align-items: flex-start;
+    margin: 0 0 1.25rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid #e8c4a8;
+    border-left: 4px solid #b45309;
+    background: linear-gradient(180deg, #fffbeb 0%, #fff7ed 100%);
+    color: #7c2d12;
+    box-shadow: 0 1px 2px rgba(124, 45, 18, 0.06);
+  }
+  .pax-alert-icon {
+    flex: 0 0 2rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: #b45309;
+    color: #fff;
+    font-weight: 800;
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .pax-alert-title {
+    display: block;
+    font-size: 1rem;
+    color: #9a3412;
+    margin-bottom: 0.25rem;
+  }
+  .pax-alert-lead {
+    margin: 0 0 0.55rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: #9a3412;
+    font-weight: 500;
+  }
+  .pax-alert-list {
+    margin: 0;
+    padding-left: 1.15rem;
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+  .pax-alert-list li { margin-bottom: 0.2rem; }
+  .pax-block {
+    margin-bottom: 1.5rem;
+    border: 1px solid #e5e0dc;
+    background: #fff;
+  }
+  .pax-block--has-error {
+    border-color: #e8c4a8;
+    box-shadow: 0 0 0 1px rgba(180, 83, 9, 0.12);
+  }
+  .badge-warn {
+    background: #fff7ed;
+    color: #b45309;
+    border: 1px solid #f0d0b0;
+    font-size: 0.75rem;
+  }
+  .form-group.is-error label { color: #9a3412; }
+  .form-group.is-error input,
+  .form-group.is-error select,
+  .form-group.is-error .country-picker-input,
+  .form-group.is-error .phone-picker-national,
+  .form-group.is-error .phone-picker-dial {
+    border-color: #d97706 !important;
+    background: #fffbeb;
+  }
+  .field-error {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #b45309;
+    line-height: 1.35;
+  }
+  .pax-block-head {
+    padding: 1rem 1.15rem 0.75rem;
+    border-bottom: 1px solid #eee;
+    background: linear-gradient(180deg, #faf8f9 0%, #fff 100%);
+  }
+  .pax-block-head h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    color: #5c0a2c;
+    font-family: var(--font-display, Inter, sans-serif);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .pax-block-hint {
+    margin: 0.4rem 0 0;
+    font-size: 0.82rem;
+    color: #777;
+  }
+  .pax-section {
+    padding: 1rem 1.15rem 1.15rem;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .pax-section:last-of-type { border-bottom: none; }
+  .pax-section--soft {
+    background: #fafafa;
+  }
+  .pax-section-title {
+    margin: 0 0 0.45rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #5c0a2c;
+  }
+  .pax-section-note,
+  .pax-passport-only {
+    margin: 0 0 0.85rem;
+    font-size: 0.84rem;
+    color: #555;
+    line-height: 1.45;
+  }
+  .pax-passport-only {
+    padding: 0.55rem 0.75rem;
+    background: #f9f0f4;
+    border-left: 3px solid #5c0a2c;
+    color: #5c0a2c;
+    font-weight: 600;
+  }
+  .pax-grid {
+    margin: 0;
+  }
+  .pax-grid .form-group label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #333;
+  }
+  .field-hint {
+    display: block;
+    margin-top: 0.3rem;
+    font-size: 0.75rem;
+    color: #888;
+    line-height: 1.35;
+  }
+  .pax-notes {
+    margin-top: 0.5rem;
+  }
+  .pax-legal {
+    margin: 1rem 0 0;
+    font-size: 0.8rem;
+    color: #777;
+    line-height: 1.45;
+  }
+  .phone-picker {
+    display: grid;
+    grid-template-columns: minmax(150px, 210px) 1fr;
+    gap: 0.5rem;
+  }
+  @media (max-width: 560px) {
+    .phone-picker { grid-template-columns: 1fr; }
+  }
+  .phone-picker-dial,
+  .phone-picker-national {
+    width: 100%;
+    border: 1px solid var(--border, #ddd);
+    border-radius: 2px;
+    padding: 0.65rem 0.7rem;
+    font: inherit;
+    font-size: 0.92rem;
+    background: #fff;
+  }
+  .phone-picker-dial:focus,
+  .phone-picker-national:focus {
+    outline: 2px solid rgba(92, 10, 44, 0.25);
+    border-color: #5c0a2c;
+  }
+  .phone-picker-preview {
+    grid-column: 1 / -1;
+    margin: 0.2rem 0 0;
+    font-size: 0.8rem;
+    color: #555;
+  }
+  @media (max-width: 640px) {
+    .pax-block-head,
+    .pax-section {
+      padding-left: 0.9rem;
+      padding-right: 0.9rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var alertEl = document.getElementById("pax-alert");
+    if (alertEl) {
+      alertEl.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+    var bad = document.querySelector(".pax-form .form-group.is-error input, .pax-form .form-group.is-error select, .pax-form .form-group.is-error .country-picker-input, .pax-form .form-group.is-error .phone-picker-national");
+    if (bad) {
+      setTimeout(function () {
+        try { bad.focus({ preventScroll: true }); } catch (e) { bad.focus(); }
+      }, 350);
+    }
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,420 @@
+{% extends "pages/base_page.html" %}
+{% block step_label %}{{ _('pref_title') }}{% endblock %}
+
+{% block content %}
+<div class="choice-page">
+  <header class="choice-head">
+    <p class="choice-eyebrow">{{ route_label }}</p>
+    <h1>{{ _('pref_title') }}</h1>
+    <p class="choice-lead">{{ _('pref_lead') }}</p>
+    <p class="choice-meta">
+      {% if round_trip %}{{ _('round_trip') }}{% else %}{{ _('one_way') }}{% endif %}
+      · {{ booking.data_viagem }}{% if booking.data_regresso %} – {{ booking.data_regresso }}{% endif %}
+      · {{ booking.n_adultos + booking.n_criancas }} pax
+      · {{ booking.classe_nome }}
+    </p>
+  </header>
+
+  <form method="post" class="choice-form" id="choice-form">
+    <div class="choice-grid" role="radiogroup" aria-label="{{ _('pref_title') }}">
+      {# Opção 1 — mais baratos #}
+      <label class="choice-card choice-card--cheap" id="card-baratos">
+        <input type="radio" name="ticket_mode" value="baratos" required>
+        <div class="choice-card-inner">
+          <div class="choice-card-bg" aria-hidden="true"></div>
+          <div class="choice-card-content">
+            <div class="choice-card-top">
+              <span class="choice-num">01</span>
+              <span class="choice-radio-ui" aria-hidden="true"></span>
+            </div>
+            <div class="choice-logos" aria-hidden="true">
+              <img src="{{ url_for('static', filename='img/airlines/FR.png') }}" alt="Ryanair" width="48" height="32" loading="lazy">
+              <img src="{{ url_for('static', filename='img/airlines/U2.png') }}" alt="easyJet" width="48" height="32" loading="lazy">
+              <img src="{{ url_for('static', filename='img/airlines/FZ.png') }}" alt="Flydubai" width="48" height="32" loading="lazy">
+              <img src="{{ url_for('static', filename='img/airlines/G9.png') }}" alt="Air Arabia" width="48" height="32" loading="lazy">
+            </div>
+            <h2>{{ _('pref_cheap') }}</h2>
+            <p>{{ _('pref_cheap_hint') }}</p>
+            <ul class="choice-points">
+              <li>Tarifas low-cost e económicas</li>
+              <li>Ordenadas do preço mais baixo ao mais alto</li>
+              <li>Sem companhias premium nesta lista</li>
+            </ul>
+            <span class="choice-pill">Melhor preço</span>
+          </div>
+        </div>
+      </label>
+
+      {# Opção 2 — melhores companhias #}
+      <label class="choice-card choice-card--best" id="card-melhores">
+        <input type="radio" name="ticket_mode" value="melhores" required>
+        <div class="choice-card-inner">
+          <div class="choice-card-bg" aria-hidden="true"></div>
+          <div class="choice-card-content">
+            <div class="choice-card-top">
+              <span class="choice-num">02</span>
+              <span class="choice-radio-ui" aria-hidden="true"></span>
+            </div>
+            <div class="choice-logos" aria-hidden="true">
+              <img src="{{ url_for('static', filename='img/airlines/EK.png') }}" alt="Emirates" width="48" height="32" loading="lazy" title="Emirates">
+              <img src="{{ url_for('static', filename='img/airlines/QR.png') }}" alt="Qatar Airways" width="48" height="32" loading="lazy" title="Qatar Airways">
+              <img src="{{ url_for('static', filename='img/airlines/ET.png') }}" alt="Ethiopian" width="48" height="32" loading="lazy" title="Ethiopian Airlines">
+              <img src="{{ url_for('static', filename='img/airlines/TP.png') }}" alt="TAP" width="48" height="32" loading="lazy" title="TAP">
+            </div>
+            <h2>{{ _('pref_best') }}</h2>
+            <p>{{ _('pref_best_hint') }}</p>
+            <ul class="choice-points">
+              <li>Emirates · Qatar Airways · Ethiopian Airlines</li>
+              <li>TAP, Turkish, Etihad e outras full-service</li>
+              <li>Sem low-cost nesta lista</li>
+            </ul>
+            <span class="choice-pill">Companhias premium</span>
+          </div>
+        </div>
+      </label>
+    </div>
+
+    <div class="choice-actions">
+      <a class="choice-back" href="{{ url_for('reserva_pesquisa') }}">{{ _('btn_back') }}</a>
+      <button type="submit" class="choice-submit" id="choice-submit" disabled>
+        {{ _('btn_continue') }}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+  .page-fase1.pref-page .page-main,
+  .pref-page .page-main {
+    width: min(920px, 94%);
+    max-width: 920px;
+    padding: 2rem 0 3.5rem;
+  }
+  .choice-page {
+    width: 100%;
+  }
+  .choice-head {
+    margin-bottom: 1.75rem;
+  }
+  .choice-eyebrow {
+    margin: 0 0 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #6b6b6b;
+  }
+  .choice-head h1 {
+    margin: 0 0 0.6rem;
+    font-size: clamp(1.5rem, 3.2vw, 1.9rem);
+    font-weight: 700;
+    color: #1a1a1a;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    font-family: var(--font-display, Inter, system-ui, sans-serif);
+  }
+  .choice-lead {
+    margin: 0 0 0.85rem;
+    font-size: 1rem;
+    color: #555;
+    line-height: 1.55;
+    max-width: 40em;
+  }
+  .choice-meta {
+    margin: 0;
+    font-size: 0.88rem;
+    color: #777;
+    padding: 0.65rem 0 0;
+    border-top: 1px solid #ececec;
+  }
+
+  .choice-form {
+    width: 100%;
+  }
+  .choice-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.15rem;
+    width: 100%;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 700px) {
+    .choice-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .choice-card {
+    display: block;
+    cursor: pointer;
+    margin: 0;
+    width: 100%;
+  }
+  .choice-card input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .choice-card-inner {
+    position: relative;
+    height: 100%;
+    min-height: 340px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.08);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.15s;
+  }
+  .choice-card:hover .choice-card-inner {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
+  }
+  .choice-card:has(input:checked) .choice-card-inner,
+  .choice-card.is-selected .choice-card-inner {
+    border: 2px solid #5c0a2c;
+    box-shadow: 0 16px 44px rgba(92, 10, 44, 0.22);
+  }
+
+  /* Fundos fotográficos + gradiente */
+  .choice-card-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    transform: scale(1.02);
+    transition: transform 0.35s ease;
+  }
+  .choice-card:hover .choice-card-bg {
+    transform: scale(1.06);
+  }
+  .choice-card--cheap .choice-card-bg {
+    background-image:
+      linear-gradient(
+        165deg,
+        rgba(6, 55, 48, 0.88) 0%,
+        rgba(13, 90, 75, 0.72) 42%,
+        rgba(8, 40, 55, 0.78) 100%
+      ),
+      url("https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=900&q=80");
+  }
+  .choice-card--best .choice-card-bg {
+    background-image:
+      linear-gradient(
+        165deg,
+        rgba(58, 6, 28, 0.92) 0%,
+        rgba(92, 10, 44, 0.78) 45%,
+        rgba(40, 20, 10, 0.75) 100%
+      ),
+      url("https://images.unsplash.com/photo-1542296332-2e4473faf563?w=900&q=80");
+  }
+  .choice-card-bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(0, 0, 0, 0.15) 50%,
+      rgba(0, 0, 0, 0.45) 100%
+    );
+  }
+
+  .choice-card-content {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    min-height: 340px;
+    padding: 1.5rem 1.4rem 1.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    color: #fff;
+  }
+  .choice-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.35rem;
+  }
+  .choice-num {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: rgba(255, 255, 255, 0.7);
+  }
+  .choice-radio-ui {
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255, 255, 255, 0.75);
+    border-radius: 50%;
+    position: relative;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(4px);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .choice-card:has(input:checked) .choice-radio-ui,
+  .choice-card.is-selected .choice-radio-ui {
+    border-color: #fff;
+    background: rgba(255, 255, 255, 0.2);
+  }
+  .choice-card:has(input:checked) .choice-radio-ui::after,
+  .choice-card.is-selected .choice-radio-ui::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .choice-logos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0.15rem 0 0.35rem;
+  }
+  .choice-logos img {
+    width: 52px;
+    height: 34px;
+    object-fit: contain;
+    background: #fff;
+    border-radius: 6px;
+    padding: 4px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  }
+  .choice-card-content h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.35;
+    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.25);
+    font-family: var(--font-display, Inter, system-ui, sans-serif);
+  }
+  .choice-card-content > p {
+    margin: 0;
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.5;
+    flex: 1;
+  }
+  .choice-points {
+    margin: 0.35rem 0 0;
+    padding: 0.85rem 0 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.22);
+    list-style: none;
+  }
+  .choice-points li {
+    position: relative;
+    padding: 0.28rem 0 0.28rem 1rem;
+    font-size: 0.84rem;
+    color: rgba(255, 255, 255, 0.88);
+    line-height: 1.4;
+  }
+  .choice-points li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.7em;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #e8d5a3;
+  }
+  .choice-pill {
+    align-self: flex-start;
+    margin-top: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.4rem 0.75rem;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(6px);
+    color: #fff;
+  }
+  .choice-card--cheap .choice-pill {
+    background: rgba(232, 213, 163, 0.22);
+    border-color: rgba(232, 213, 163, 0.45);
+    color: #f5efd8;
+  }
+  .choice-card--best .choice-pill {
+    background: rgba(255, 255, 255, 0.14);
+    color: #f0e6ea;
+  }
+
+  .choice-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-top: 0.35rem;
+  }
+  .choice-back {
+    color: #555;
+    font-weight: 600;
+    font-size: 0.92rem;
+    text-decoration: none;
+  }
+  .choice-back:hover {
+    color: #5c0a2c;
+    text-decoration: underline;
+  }
+  .choice-submit {
+    min-width: min(100%, 280px);
+    flex: 1;
+    max-width: 360px;
+    margin-left: auto;
+    border: none;
+    background: linear-gradient(135deg, #5c0a2c 0%, #8a1548 100%);
+    color: #fff;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 1.05rem 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 10px 28px rgba(92, 10, 44, 0.28);
+    transition: background 0.15s, opacity 0.15s, transform 0.12s, box-shadow 0.15s;
+  }
+  .choice-submit:hover:not(:disabled) {
+    background: linear-gradient(135deg, #7d103d 0%, #a01a55 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 14px 32px rgba(92, 10, 44, 0.35);
+  }
+  .choice-submit:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const form = document.getElementById("choice-form");
+  const submit = document.getElementById("choice-submit");
+  if (!form || !submit) return;
+  const cards = form.querySelectorAll(".choice-card");
+  function sync() {
+    let any = false;
+    cards.forEach((card) => {
+      const input = card.querySelector('input[type="radio"]');
+      const on = input && input.checked;
+      card.classList.toggle("is-selected", !!on);
+      if (on) any = true;
+    });
+    submit.disabled = !any;
+  }
+  cards.forEach((card) => {
+    card.addEventListener("click", () => setTimeout(sync, 0));
+  });
+  form.addEventListener("change", sync);
+  sync();
+})();
+</script>
+{% endblock %}

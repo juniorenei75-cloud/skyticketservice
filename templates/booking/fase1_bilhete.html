@@ -1,0 +1,264 @@
+{% extends "booking/base_booking.html" %}
+{% block title %}Fase 1 · Bilhete · {{ agencia }}{% endblock %}
+
+{% block phase_body %}
+<div class="phase-card">
+  <h2>✈ Fase 1 — Escolha da viagem</h2>
+  <p class="card-meta" style="margin-top:-.5rem">
+    A SKYTICKETservice leva-o a <strong>qualquer país do mundo</strong>
+    ({{ n_paises }} destinos). Sem limites de continente.
+  </p>
+
+  <form method="post" id="form-fase1">
+    {# PASSO A: tipo de viagem — só depois disto abrem as datas #}
+    <div style="margin-bottom:1.25rem;padding:1.15rem;border-radius:14px;background:#f0f9ff;border:1px solid #bae6fd">
+      <strong style="color:var(--navy);font-size:1.05rem">1. Como será a viagem? *</strong>
+      <p class="card-meta" style="margin:.35rem 0 .75rem">
+        Escolha primeiro. Os campos de data só aparecem depois da sua escolha.
+      </p>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+        <label class="ticket-option" style="flex:1;min-width:160px;margin:0;cursor:pointer">
+          <input type="radio" name="tipo_viagem" value="ida"
+                 {% if booking.tipo_viagem == 'ida' %}checked{% endif %}
+                 onchange="onTipoViagemChange()">
+          ➡ Só ida (sentido único)
+          <div class="card-meta" style="margin-top:.35rem">Uma data de partida — sem regresso neste bilhete</div>
+        </label>
+        <label class="ticket-option" style="flex:1;min-width:160px;margin:0;cursor:pointer">
+          <input type="radio" name="tipo_viagem" value="ida_volta"
+                 {% if booking.tipo_viagem == 'ida_volta' %}checked{% endif %}
+                 onchange="onTipoViagemChange()">
+          ⇄ Ida e volta
+          <div class="card-meta" style="margin-top:.35rem">Data de ida + data de regresso</div>
+        </label>
+      </div>
+    </div>
+
+    {# PASSO B: datas — oculto até escolher o tipo #}
+    <div id="bloco-datas"
+         style="margin-bottom:1.25rem;{% if booking.tipo_viagem not in ['ida', 'ida_volta'] %}display:none{% endif %}">
+      <strong style="color:var(--navy);font-size:1.05rem">2. Datas da viagem *</strong>
+      <p class="card-meta" id="hint-datas" style="margin:.35rem 0 .75rem"></p>
+      <div class="form-grid">
+        <div class="form-group" id="grupo-ida">
+          <label for="data_viagem" id="label-data-ida">Data de ida / partida *</label>
+          <input id="data_viagem" type="date" name="data_viagem"
+                 value="{{ booking.data_viagem or '' }}">
+        </div>
+        <div class="form-group" id="grupo-regresso"
+             style="{% if booking.tipo_viagem != 'ida_volta' %}display:none{% endif %}">
+          <label for="data_regresso">Data de regresso *</label>
+          <input id="data_regresso" type="date" name="data_regresso"
+                 value="{{ booking.data_regresso or '' }}">
+        </div>
+        <div class="form-group">
+          <label for="n_passageiros">N.º de passageiros *</label>
+          <input id="n_passageiros" type="number" name="n_passageiros" min="1" max="9"
+                 value="{{ booking.n_passageiros or 1 }}" required>
+        </div>
+      </div>
+    </div>
+
+    <div id="resto-formulario"
+         style="{% if booking.tipo_viagem not in ['ida', 'ida_volta'] %}display:none{% endif %}">
+    <div style="margin-bottom:1rem">
+      <strong style="color:var(--navy)">3. Como quer escolher a rota?</strong>
+      <div style="margin-top:.5rem;display:flex;gap:.75rem;flex-wrap:wrap">
+        <label class="ticket-option" style="flex:1;min-width:180px;margin:0">
+          <input type="radio" name="modo" value="mundo"
+                 {% if booking.modo != 'catalogo' %}checked{% endif %}
+                 onchange="toggleModo('mundo')">
+          🌍 Qualquer país do mundo
+          <div class="card-meta" style="margin-top:.35rem">Origem e destino livres — cotação personalizada</div>
+        </label>
+        <label class="ticket-option" style="flex:1;min-width:180px;margin:0">
+          <input type="radio" name="modo" value="catalogo"
+                 {% if booking.modo == 'catalogo' %}checked{% endif %}
+                 onchange="toggleModo('catalogo')">
+          📋 Catálogo (voos / pacotes)
+          <div class="card-meta" style="margin-top:.35rem">Rotas e pacotes com preço já listado</div>
+        </label>
+      </div>
+    </div>
+
+    <!-- MODO MUNDO -->
+    <div id="bloco-mundo" style="{% if booking.modo == 'catalogo' %}display:none{% endif %}">
+      <h3 style="color:var(--navy);font-size:1.05rem">Rota mundial (sem limites)</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="origem_pais">País de origem *</label>
+          <div class="country-picker"
+               id="origem_pais"
+               data-name="origem_pais"
+               data-value="{{ booking.origem_pais or 'Moçambique' }}"
+               data-required="1"
+               data-placeholder="Clique ou digite — vê a lista de países"></div>
+        </div>
+        <div class="form-group">
+          <label for="origem_cidade">Cidade de origem</label>
+          <input id="origem_cidade" name="origem_cidade"
+                 value="{{ booking.origem_cidade or 'Maputo' }}"
+                 placeholder="Ex: Maputo, Nampula, Beira…">
+        </div>
+        <div class="form-group">
+          <label for="destino_pais">País de destino *</label>
+          <div class="country-picker"
+               id="destino_pais"
+               data-name="destino_pais"
+               data-value="{{ booking.destino_pais or '' }}"
+               data-required="1"
+               data-placeholder="Clique ou digite — pré-visualiza os países"></div>
+        </div>
+        <div class="form-group">
+          <label for="destino_cidade">Cidade de destino</label>
+          <input id="destino_cidade" name="destino_cidade"
+                 value="{{ booking.destino_cidade or '' }}"
+                 placeholder="Ex: Lisboa, Dubai, Paris, Tóquio…">
+        </div>
+      </div>
+      <p class="card-meta">
+        💡 <strong>Autocomplete:</strong> clique no campo para ver a lista;
+        digite <em>P</em> e veja Portugal, Peru, Paraguai… Só pode escolher países da lista
+        ({{ n_paises }} países). Não é aceite um nome que não exista no sistema.
+        <a href="{{ url_for('destinos') }}" target="_blank">Ver todos →</a>
+      </p>
+    </div>
+
+    <!-- MODO CATÁLOGO -->
+    <div id="bloco-catalogo" style="{% if booking.modo != 'catalogo' %}display:none{% endif %}">
+      <div style="margin-bottom:.75rem">
+        <strong style="color:var(--navy)">Tipo no catálogo</strong>
+        <div style="margin-top:.5rem;display:flex;gap:.75rem;flex-wrap:wrap">
+          <label class="ticket-option" style="flex:1;min-width:140px;margin:0">
+            <input type="radio" name="tipo" value="voo" {% if booking.tipo != 'pacote' %}checked{% endif %}
+                   onchange="toggleTipo('voo')">
+            Voo / Bilhete aéreo
+          </label>
+          <label class="ticket-option" style="flex:1;min-width:140px;margin:0">
+            <input type="radio" name="tipo" value="pacote" {% if booking.tipo == 'pacote' %}checked{% endif %}
+                   onchange="toggleTipo('pacote')">
+            Pacote turístico
+          </label>
+        </div>
+      </div>
+
+      <div id="lista-voos" style="{% if booking.tipo == 'pacote' %}display:none{% endif %}">
+        <h3 style="color:var(--navy);font-size:1rem">Voos em destaque</h3>
+        {% for v in voos %}
+        <label class="ticket-option">
+          <input type="radio" name="item_id" value="{{ v.id }}" class="radio-voo"
+                 {% if booking.modo == 'catalogo' and booking.tipo != 'pacote' and booking.item_id == v.id %}checked{% endif %}
+                 {% if booking.modo == 'catalogo' and booking.tipo != 'pacote' and not booking.item_id and loop.first %}checked{% endif %}
+                 {% if booking.modo != 'catalogo' or booking.tipo == 'pacote' %}disabled{% endif %}>
+          <span class="price">{{ v.preco|money(v.moeda) }}</span>
+          <strong>{{ v.origem }} → {{ v.destino }}</strong><br>
+          <span class="card-meta">{{ v.companhia }} · {{ v.classe }} · {{ v.duracao or '—' }}</span>
+        </label>
+        {% else %}
+        <p class="card-meta">Sem voos no catálogo — use o modo «Qualquer país do mundo».</p>
+        {% endfor %}
+      </div>
+
+      <div id="lista-pacotes" style="{% if booking.tipo != 'pacote' %}display:none{% endif %}">
+        <h3 style="color:var(--navy);font-size:1rem">Pacotes em destaque</h3>
+        {% for p in pacotes %}
+        <label class="ticket-option">
+          <input type="radio" name="item_id" value="{{ p.id }}" class="radio-pacote"
+                 {% if booking.modo == 'catalogo' and booking.tipo == 'pacote' and booking.item_id == p.id %}checked{% endif %}
+                 {% if booking.modo == 'catalogo' and booking.tipo == 'pacote' and not booking.item_id and loop.first %}checked{% endif %}
+                 {% if booking.modo != 'catalogo' or booking.tipo != 'pacote' %}disabled{% endif %}>
+          <span class="price">{{ p.preco|money(p.moeda) }}</span>
+          <strong>{{ p.titulo }}</strong><br>
+          <span class="card-meta">📍 {{ p.destino }} · {{ p.duracao_dias }} dias</span>
+        </label>
+        {% else %}
+        <p class="card-meta">Sem pacotes no catálogo.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="phase-actions">
+      <a class="btn btn-ghost" href="{{ url_for('destinos') }}">Ver todos os países</a>
+      <button class="btn btn-primary" type="submit" id="btn-continuar">Continuar para Assentos →</button>
+    </div>
+    </div>{# /resto-formulario #}
+
+    <p id="aviso-escolha" class="card-meta" style="margin-top:1rem;{% if booking.tipo_viagem in ['ida', 'ida_volta'] %}display:none{% endif %}">
+      ☝️ Escolha <strong>Só ida</strong> ou <strong>Ida e volta</strong> em cima para continuar e indicar as datas.
+    </p>
+  </form>
+</div>
+<script>
+function onTipoViagemChange() {
+  const val = document.querySelector('input[name="tipo_viagem"]:checked')?.value;
+  const blocoDatas = document.getElementById('bloco-datas');
+  const resto = document.getElementById('resto-formulario');
+  const aviso = document.getElementById('aviso-escolha');
+  const grupoRegresso = document.getElementById('grupo-regresso');
+  const dataIda = document.getElementById('data_viagem');
+  const dataReg = document.getElementById('data_regresso');
+  const hint = document.getElementById('hint-datas');
+  const labelIda = document.getElementById('label-data-ida');
+
+  if (val !== 'ida' && val !== 'ida_volta') {
+    blocoDatas.style.display = 'none';
+    resto.style.display = 'none';
+    aviso.style.display = 'block';
+    dataIda.required = false;
+    dataReg.required = false;
+    return;
+  }
+
+  blocoDatas.style.display = 'block';
+  resto.style.display = 'block';
+  aviso.style.display = 'none';
+  dataIda.required = true;
+
+  if (val === 'ida') {
+    grupoRegresso.style.display = 'none';
+    dataReg.required = false;
+    dataReg.value = '';
+    labelIda.textContent = 'Data de partida (só ida) *';
+    hint.textContent = 'Viagem de sentido único: indique apenas o dia em que parte.';
+  } else {
+    grupoRegresso.style.display = 'block';
+    dataReg.required = true;
+    labelIda.textContent = 'Data de ida *';
+    hint.textContent = 'Ida e volta: indique a data de ida e a data de regresso.';
+  }
+}
+
+// Ao carregar a página (voltar de outra fase)
+document.addEventListener('DOMContentLoaded', onTipoViagemChange);
+
+function toggleModo(modo) {
+  document.getElementById('bloco-mundo').style.display = modo === 'mundo' ? 'block' : 'none';
+  document.getElementById('bloco-catalogo').style.display = modo === 'catalogo' ? 'block' : 'none';
+  const destHidden = document.querySelector('input[name="destino_pais"]');
+  if (modo === 'mundo') {
+    if (destHidden) destHidden.required = true;
+    document.querySelectorAll('.radio-voo, .radio-pacote').forEach(r => { r.disabled = true; });
+  } else {
+    if (destHidden) destHidden.required = false;
+    toggleTipo(document.querySelector('input[name="tipo"]:checked')?.value || 'voo');
+  }
+}
+function toggleTipo(tipo) {
+  const voos = document.getElementById('lista-voos');
+  const pacotes = document.getElementById('lista-pacotes');
+  const rVoos = document.querySelectorAll('.radio-voo');
+  const rPac = document.querySelectorAll('.radio-pacote');
+  if (tipo === 'voo') {
+    voos.style.display = 'block';
+    pacotes.style.display = 'none';
+    rVoos.forEach((r, i) => { r.disabled = false; if (i === 0 && !document.querySelector('.radio-voo:checked')) r.checked = true; });
+    rPac.forEach(r => { r.disabled = true; r.checked = false; });
+  } else {
+    voos.style.display = 'none';
+    pacotes.style.display = 'block';
+    rPac.forEach((r, i) => { r.disabled = false; if (i === 0 && !document.querySelector('.radio-pacote:checked')) r.checked = true; });
+    rVoos.forEach(r => { r.disabled = true; r.checked = false; });
+  }
+}
+</script>
+{% endblock %}

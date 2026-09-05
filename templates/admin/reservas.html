@@ -1,0 +1,77 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Reservas{% endblock %}
+
+{% block content %}
+<div class="admin-top">
+  <h1>Reservas</h1>
+  <div class="actions-row">
+    <a class="btn btn-sm {% if not status %}btn-primary{% else %}btn-ghost{% endif %}" href="{{ url_for('admin_reservas') }}">Todas</a>
+    <a class="btn btn-sm {% if status == 'pendente' %}btn-primary{% else %}btn-ghost{% endif %}" href="{{ url_for('admin_reservas', status='pendente') }}">Pendentes</a>
+    <a class="btn btn-sm {% if status == 'confirmada' %}btn-primary{% else %}btn-ghost{% endif %}" href="{{ url_for('admin_reservas', status='confirmada') }}">Confirmadas</a>
+    <a class="btn btn-sm {% if status == 'cancelada' %}btn-primary{% else %}btn-ghost{% endif %}" href="{{ url_for('admin_reservas', status='cancelada') }}">Canceladas</a>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table class="data">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Cliente</th>
+        <th>Contacto</th>
+        <th>Tipo</th>
+        <th>Pax</th>
+        <th>Total</th>
+        <th>Estado</th>
+        <th>Acções</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reservas %}
+      <tr>
+        <td><strong>{{ r.codigo }}</strong><br><span class="card-meta" style="font-size:.78rem">{{ r.criado_em }}</span></td>
+        <td>{{ r.cliente_nome }}</td>
+        <td>{{ r.email }}<br>{{ r.telefone or '' }}</td>
+        <td>
+          {{ r.tipo }}{% if r.item_id %} #{{ r.item_id }}{% endif %}
+          {% if r.destino_pais %}<br><span class="card-meta" style="font-size:.78rem">🌍 {{ r.origem_pais or '?' }} → {{ r.destino_pais }}</span>{% endif %}
+          {% if r.tipo_viagem == 'ida_volta' %}<br><span class="badge badge-gold" style="font-size:.7rem">⇄ Ida e volta</span>
+          {% elif r.tipo_viagem == 'ida' %}<br><span class="badge" style="font-size:.7rem">➡ Só ida</span>{% endif %}
+          {% if r.data_viagem %}<br><span class="card-meta" style="font-size:.78rem">Ida: {{ r.data_viagem }}{% if r.data_regresso %} · Volta: {{ r.data_regresso }}{% endif %}</span>{% endif %}
+          {% if r.assentos %}<br><span class="card-meta" style="font-size:.78rem">💺 Ida: {{ r.assentos }}{% if r.assentos_volta %} · Volta: {{ r.assentos_volta }}{% endif %}</span>{% endif %}
+        </td>
+        <td>{{ r.passageiros }}</td>
+        <td>{{ r.total|money(r.moeda) }}</td>
+        <td>
+          {% if r.status == 'confirmada' %}<span class="badge badge-success">confirmada</span>
+          {% elif r.status == 'cancelada' %}<span class="badge badge-danger">cancelada</span>
+          {% else %}<span class="badge badge-warning">pendente</span>{% endif %}
+        </td>
+        <td class="actions-row">
+          {% if r.status != 'confirmada' %}
+          <form class="inline-form" method="post" action="{{ url_for('admin_reserva_status', rid=r.id, status=status) }}">
+            <input type="hidden" name="status" value="confirmada">
+            <button class="btn btn-success btn-sm" type="submit">Confirmar</button>
+          </form>
+          {% endif %}
+          {% if r.status != 'pendente' %}
+          <form class="inline-form" method="post" action="{{ url_for('admin_reserva_status', rid=r.id, status=status) }}">
+            <input type="hidden" name="status" value="pendente">
+            <button class="btn btn-ghost btn-sm" type="submit">Pendente</button>
+          </form>
+          {% endif %}
+          {% if r.status != 'cancelada' %}
+          <form class="inline-form" method="post" action="{{ url_for('admin_reserva_status', rid=r.id, status=status) }}" data-confirm="Cancelar esta reserva?">
+            <input type="hidden" name="status" value="cancelada">
+            <button class="btn btn-danger btn-sm" type="submit">Cancelar</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="text-align:center;color:var(--muted)">Nenhuma reserva neste filtro.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

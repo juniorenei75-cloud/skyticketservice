@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Reserva · {{ agencia }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container">
+    <h1>Nova reserva</h1>
+    <p>Preencha os seus dados — entraremos em contacto para confirmar</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container" style="display:grid;grid-template-columns:1.2fr .8fr;gap:1.5rem;align-items:start">
+    <form method="post" class="form-card" style="max-width:100%">
+      <input type="hidden" name="tipo" value="{{ tipo }}">
+      <input type="hidden" name="item_id" value="{{ item.id if item else '' }}">
+
+      <h2 style="margin-top:0;color:var(--navy);font-size:1.2rem">Dados do passageiro</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="nome">Nome completo *</label>
+          <input id="nome" name="nome" required value="{{ form.nome if form else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="email">E-mail *</label>
+          <input id="email" type="email" name="email" required value="{{ form.email if form else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="telefone">Telefone / WhatsApp</label>
+          <input id="telefone" name="telefone" placeholder="+258 84 XXX XXXX" value="{{ form.telefone if form else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="documento">BI / Passaporte</label>
+          <input id="documento" name="documento" value="{{ form.documento if form else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="data_viagem">Data da viagem</label>
+          <input id="data_viagem" type="date" name="data_viagem" value="{{ form.data_viagem if form else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="passageiros">N.º de passageiros</label>
+          <input id="passageiros" type="number" name="passageiros" min="1" value="{{ form.passageiros if form and form.passageiros else 1 }}">
+        </div>
+        <div class="form-group full">
+          <label for="observacoes">Observações</label>
+          <textarea id="observacoes" name="observacoes" placeholder="Preferências, bagagem extra, etc.">{{ form.observacoes if form else '' }}</textarea>
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit">Confirmar pedido de reserva</button>
+    </form>
+
+    <aside class="detail-panel">
+      <h3 style="margin:0 0 .75rem;color:var(--navy)">Resumo</h3>
+      {% if item %}
+        {% if tipo == 'voo' %}
+          <span class="badge">Voo</span>
+          <p style="margin:.75rem 0 0"><strong>{{ item.origem }} → {{ item.destino }}</strong></p>
+          <p class="card-meta">{{ item.companhia }} · {{ item.classe }} · {{ item.duracao or '' }}</p>
+          <div class="price" style="font-size:1.4rem">{{ item.preco|money(item.moeda) }} <span style="font-size:.85rem;font-weight:500;color:var(--muted)">/ pax</span></div>
+        {% else %}
+          <span class="badge">Pacote</span>
+          <p style="margin:.75rem 0 0"><strong>{{ item.titulo }}</strong></p>
+          <p class="card-meta">📍 {{ item.destino }} · {{ item.duracao_dias }} dias</p>
+          <div class="price" style="font-size:1.4rem">{{ item.preco|money(item.moeda) }} <span style="font-size:.85rem;font-weight:500;color:var(--muted)">/ pax</span></div>
+        {% endif %}
+      {% else %}
+        <p class="card-meta">Seleccione um <a href="{{ url_for('pacotes') }}">pacote</a> ou <a href="{{ url_for('voos') }}">voo</a> antes de reservar.</p>
+      {% endif %}
+      <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0">
+      <p class="card-meta" style="font-size:.85rem">
+        Após o pedido, a equipa SKYTICKETservice valida disponibilidade e confirma o pagamento.
+        Estado inicial: <strong>pendente</strong>.
+      </p>
+    </aside>
+  </div>
+</section>
+
+<style>
+@media (max-width: 800px) {
+  .section .container[style] { grid-template-columns: 1fr !important; }
+}
+</style>
+{% endblock %}

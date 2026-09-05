@@ -1,0 +1,49 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Mensagens{% endblock %}
+
+{% block content %}
+<div class="admin-top">
+  <h1>Mensagens de contacto</h1>
+</div>
+
+<div class="table-wrap">
+  <table class="data">
+    <thead>
+      <tr>
+        <th>De</th>
+        <th>Assunto</th>
+        <th>Mensagem</th>
+        <th>Data</th>
+        <th>Estado</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in mensagens %}
+      <tr style="{% if not m.lida %}background:#f0f9ff{% endif %}">
+        <td>
+          <strong>{{ m.nome }}</strong><br>
+          <span class="card-meta" style="font-size:.8rem">{{ m.email }}{% if m.telefone %} · {{ m.telefone }}{% endif %}</span>
+        </td>
+        <td>{{ m.assunto or '—' }}</td>
+        <td style="max-width:280px">{{ m.corpo }}</td>
+        <td>{{ m.criado_em }}</td>
+        <td>
+          {% if m.lida %}<span class="badge badge-muted">lida</span>
+          {% else %}<span class="badge badge-warning">nova</span>{% endif %}
+        </td>
+        <td>
+          {% if not m.lida %}
+          <form method="post" action="{{ url_for('admin_mensagem_lida', mid=m.id) }}">
+            <button class="btn btn-ghost btn-sm" type="submit">Marcar lida</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center;color:var(--muted)">Sem mensagens.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

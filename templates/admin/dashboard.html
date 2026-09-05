@@ -1,0 +1,60 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="admin-top">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="card-meta" style="margin:0">Olá, {{ session.username }} · visão geral da agência</p>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="label">Reservas</div><div class="value">{{ stats.reservas }}</div></div>
+  <div class="stat"><div class="label">Pendentes</div><div class="value" style="color:var(--warning)">{{ stats.pendentes }}</div></div>
+  <div class="stat"><div class="label">Confirmadas</div><div class="value" style="color:var(--success)">{{ stats.confirmadas }}</div></div>
+  <div class="stat"><div class="label">Clientes</div><div class="value">{{ stats.clientes }}</div></div>
+  <div class="stat"><div class="label">Pacotes activos</div><div class="value">{{ stats.pacotes }}</div></div>
+  <div class="stat"><div class="label">Voos activos</div><div class="value">{{ stats.voos }}</div></div>
+  <div class="stat"><div class="label">Msgs por ler</div><div class="value">{{ stats.mensagens }}</div></div>
+  <div class="stat"><div class="label">Receita conf.</div><div class="value" style="font-size:1.15rem">{{ stats.receita|money('MZN') }}</div></div>
+</div>
+
+<div class="admin-top" style="margin-top:0.5rem">
+  <h2 style="margin:0;font-size:1.15rem;color:var(--navy)">Reservas recentes</h2>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('admin_reservas') }}">Ver todas</a>
+</div>
+
+<div class="table-wrap">
+  <table class="data">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Cliente</th>
+        <th>Tipo</th>
+        <th>Total</th>
+        <th>Estado</th>
+        <th>Data</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in recentes %}
+      <tr>
+        <td><strong>{{ r.codigo }}</strong></td>
+        <td>{{ r.cliente_nome }}</td>
+        <td>{{ r.tipo }}</td>
+        <td>{{ r.total|money(r.moeda) }}</td>
+        <td>
+          {% if r.status == 'confirmada' %}<span class="badge badge-success">confirmada</span>
+          {% elif r.status == 'cancelada' %}<span class="badge badge-danger">cancelada</span>
+          {% else %}<span class="badge badge-warning">pendente</span>{% endif %}
+        </td>
+        <td>{{ r.criado_em }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center;color:var(--muted)">Ainda sem reservas.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

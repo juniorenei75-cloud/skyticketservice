@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Admin · SKYTICKETservice</title>
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='img/logo.jpg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <div style="display:flex;align-items:center;gap:.65rem;margin-bottom:1rem">
+        <span class="brand-mark">
+          <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="SKYTICKETservice" width="42" height="42">
+        </span>
+        <strong style="color:var(--navy)">SKYTICKETservice</strong>
+      </div>
+      <h1>Painel administrativo</h1>
+      <p>Entre com as suas credenciais de gestor.</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="post">
+        <div class="form-group">
+          <label for="username">Utilizador</label>
+          <input id="username" name="username" required autocomplete="username" value="admin">
+        </div>
+        <div class="form-group">
+          <label for="password">Senha</label>
+          <input id="password" type="password" name="password" required autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" style="width:100%" type="submit">Entrar</button>
+      </form>
+      <p style="margin-top:1rem;font-size:.82rem;color:var(--muted);text-align:center">
+        Demo: <code>admin</code> / <code>admin123</code><br>
+        <a href="{{ url_for('index') }}">← Voltar ao site</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>

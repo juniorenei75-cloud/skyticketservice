@@ -1,0 +1,99 @@
+{% extends "pages/base_page.html" %}
+{% block step_label %}{{ _('phase') }} 4 {{ _('of') }} 6 · {{ _('seats') }}{% endblock %}
+
+{% block content %}
+<div class="page-panel">
+  <h1>{{ _('phase4_title') }}</h1>
+
+  {% if is_pacote %}
+  <p class="lead">{{ _('phase4_package') }}</p>
+  <form method="post">
+    <div class="page-actions">
+      <a class="btn btn-ghost" href="{{ url_for('reserva_passageiros') }}">{{ _('btn_back') }}</a>
+      <button class="btn btn-primary" type="submit">{{ _('btn_continue') }}</button>
+    </div>
+  </form>
+  {% else %}
+  <p class="lead">{{ _('phase4_lead') }} — <strong>{{ booking.classe_nome }}</strong></p>
+  <div class="summary-chip">{{ booking.ticket_label }} · {{ n_pax }}</div>
+
+  <div class="seat-legend">
+    <span><button type="button" class="seat" style="width:28px;height:28px;pointer-events:none"></button> {{ _('free') }}</span>
+    <span><button type="button" class="seat selected" style="width:28px;height:28px;pointer-events:none"></button> {{ _('yours') }}</span>
+    <span><button type="button" class="seat occupied" style="width:28px;height:28px;pointer-events:none">×</button> {{ _('occupied') }}</span>
+  </div>
+
+  <form method="post" id="seat-form">
+    <h3 style="color:var(--navy)">✈ {{ _('outbound') }} (<span id="sel-count">0</span>/{{ n_pax }})</h3>
+    <div class="seat-map" id="seat-map" data-max="{{ n_pax }}" data-name="assentos">
+      {% for row in layout.rows %}
+      <div class="seat-row">
+        <span class="row-num">{{ row }}</span>
+        {% for col in layout.cols %}
+          {% set seat = row|string + col %}
+          {% if loop.index0 == (layout.cols|length // 2) %}<span class="seat-aisle"></span>{% endif %}
+          <button type="button" class="seat {% if seat in layout.occupied %}occupied{% endif %} {% if seat in selected %}selected{% endif %}"
+                  data-seat="{{ seat }}" {% if seat in layout.occupied %}disabled{% endif %}>{{ col }}</button>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    <div id="hidden-seats"></div>
+
+    {% if round_trip and layout_volta %}
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:1.5rem 0">
+    <h3 style="color:var(--navy)">↩ {{ _('inbound') }} (<span id="sel-count-volta">0</span>/{{ n_pax }})</h3>
+    <div class="seat-map" id="seat-map-volta" data-max="{{ n_pax }}" data-name="assentos_volta">
+      {% for row in layout_volta.rows %}
+      <div class="seat-row">
+        <span class="row-num">{{ row }}</span>
+        {% for col in layout_volta.cols %}
+          {% set seat = row|string + col %}
+          {% if loop.index0 == (layout_volta.cols|length // 2) %}<span class="seat-aisle"></span>{% endif %}
+          <button type="button" class="seat {% if seat in layout_volta.occupied %}occupied{% endif %} {% if seat in selected_volta %}selected{% endif %}"
+                  data-seat="{{ seat }}" {% if seat in layout_volta.occupied %}disabled{% endif %}>{{ col }}</button>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    <div id="hidden-seats-volta"></div>
+    {% endif %}
+
+    <div class="page-actions">
+      <a class="btn btn-ghost" href="{{ url_for('reserva_passageiros') }}">{{ _('btn_back') }}</a>
+      <button class="btn btn-primary" type="submit">{{ _('btn_continue') }}</button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if not is_pacote %}
+<script>
+(function(){
+  const MSG_MAX = {{ _('seat_max')|tojson }};
+  const MSG_OUT = {{ _('seat_need_out')|tojson }};
+  const MSG_RET = {{ _('seat_need_ret')|tojson }};
+  function wire(mapId, hidId, cntId){
+    const map=document.getElementById(mapId), hid=document.getElementById(hidId), cnt=document.getElementById(cntId);
+    if(!map||!hid) return {size:()=>0,max:0};
+    const max=+map.dataset.max||1, name=map.dataset.name;
+    let sel=new Set([...map.querySelectorAll('.seat.selected')].map(b=>b.dataset.seat));
+    function sync(){ if(cnt) cnt.textContent=sel.size; hid.innerHTML=''; sel.forEach(s=>{const i=document.createElement('input');i.type='hidden';i.name=name;i.value=s;hid.appendChild(i);}); }
+    map.querySelectorAll('.seat:not(.occupied)').forEach(btn=>{
+      btn.onclick=()=>{const s=btn.dataset.seat; if(sel.has(s)){sel.delete(s);btn.classList.remove('selected');}
+        else{if(sel.size>=max){alert(MSG_MAX);return;} sel.add(s);btn.classList.add('selected');} sync();};
+    });
+    sync(); return {size:()=>sel.size,max};
+  }
+  const ida=wire('seat-map','hidden-seats','sel-count');
+  const volta=wire('seat-map-volta','hidden-seats-volta','sel-count-volta');
+  document.getElementById('seat-form').onsubmit=e=>{
+    if(ida.size()!==ida.max){e.preventDefault();alert(MSG_OUT);return;}
+    if(document.getElementById('seat-map-volta')&&volta.size()!==volta.max){e.preventDefault();alert(MSG_RET);}
+  };
+})();
+</script>
+{% endif %}
+{% endblock %}

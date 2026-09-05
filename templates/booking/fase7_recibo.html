@@ -1,0 +1,87 @@
+{% extends "booking/base_booking.html" %}
+{% block title %}Reserva {{ reserva.codigo }} · {{ agencia }}{% endblock %}
+
+{% block phase_body %}
+<div class="phase-card" style="text-align:center">
+  <div style="font-size:2.75rem">✅</div>
+  <h2 style="margin-top:.5rem">Confirmação final da reserva</h2>
+  <p>Obrigado, <strong>{{ reserva.nome }}</strong>. O pagamento foi registado e a reserva está confirmada no sistema (aguarda validação da agência).</p>
+  <div class="code" style="font-size:1.5rem;font-weight:800;letter-spacing:.08em;color:var(--navy);background:var(--sky-soft);display:inline-block;padding:.6rem 1.2rem;border-radius:12px;margin:1rem 0">
+    {{ reserva.codigo }}
+  </div>
+  <p class="card-meta">Guarde este código. Estado actual: <span class="badge badge-warning">{{ reserva.status }}</span></p>
+
+  <div class="review-grid" style="text-align:left;margin:1.5rem 0">
+    {% if pagamento %}
+    <div class="review-row">
+      <div class="label">Pagamento</div>
+      <div class="value">{{ pagamento }} (aguarda validação)</div>
+    </div>
+    {% endif %}
+    <div class="review-row">
+      <div class="label">Tipo</div>
+      <div class="value">
+        {% if reserva.tipo_viagem == 'ida_volta' %}<span class="badge badge-gold">⇄ Ida e volta</span>
+        {% else %}<span class="badge">➡ Só ida</span>{% endif %}
+      </div>
+    </div>
+    <div class="review-row">
+      <div class="label">Rota</div>
+      <div class="value">
+        {{ reserva.origem_cidade or '' }}{% if reserva.origem_pais %}, {{ reserva.origem_pais }}{% endif %}
+        →
+        {{ reserva.destino_cidade or '' }}{% if reserva.destino_pais %}, {{ reserva.destino_pais }}{% endif %}
+      </div>
+    </div>
+    {% if reserva.data_viagem %}
+    <div class="review-row">
+      <div class="label">Ida</div>
+      <div class="value">{{ reserva.data_viagem }}</div>
+    </div>
+    {% endif %}
+    {% if reserva.data_regresso %}
+    <div class="review-row">
+      <div class="label">Volta</div>
+      <div class="value">{{ reserva.data_regresso }}</div>
+    </div>
+    {% endif %}
+    {% if reserva.assentos %}
+    <div class="review-row">
+      <div class="label">Assentos ida</div>
+      <div class="value">{{ reserva.assentos }}</div>
+    </div>
+    {% endif %}
+    {% if reserva.assentos_volta %}
+    <div class="review-row">
+      <div class="label">Assentos volta</div>
+      <div class="value">{{ reserva.assentos_volta }}</div>
+    </div>
+    {% endif %}
+    <div class="review-row">
+      <div class="label">Passageiros</div>
+      <div class="value">{{ reserva.passageiros }}</div>
+    </div>
+    <div class="review-row">
+      <div class="label">Total</div>
+      <div class="value">
+        {% if reserva.total and reserva.total > 0 %}{{ reserva.total|money(reserva.moeda) }}
+        {% else %}Cotação{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if wa_notif and wa_notif.link %}
+  <div style="text-align:left;margin-bottom:1.25rem;padding:1.15rem;border:2px solid #86efac;border-radius:14px;background:#f0fdf4">
+    <p style="margin:0 0 .5rem;font-weight:800;color:var(--navy)">📱 Avisar a agência no WhatsApp</p>
+    <a class="btn btn-primary" style="width:100%" href="{{ wa_notif.link }}" target="_blank" rel="noopener">
+      Enviar no WhatsApp
+    </a>
+  </div>
+  {% endif %}
+
+  <div class="phase-actions" style="justify-content:center;border:none">
+    <a class="btn btn-ghost" href="{{ url_for('index') }}">Início</a>
+    <a class="btn btn-primary" href="{{ url_for('reserva') }}">Nova reserva</a>
+  </div>
+</div>
+{% endblock %}

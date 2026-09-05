@@ -1,0 +1,125 @@
+{% extends "pages/base_page.html" %}
+{% block step_label %}{{ _('phase') }} 1 {{ _('of') }} 6 · {{ _('search') }}{% endblock %}
+
+{% block content %}
+<div class="page-panel">
+  <h1>{{ _('where_travel') }}</h1>
+  <p class="lead">{{ _('phase1_lead') }} ({{ n_paises }})</p>
+
+  <form method="post" action="{{ url_for('reserva_pesquisa') }}">
+    <div style="margin-bottom:1.25rem">
+      <strong style="color:var(--navy)">{{ _('origin_dest') }}</strong>
+      <div class="form-grid" style="margin-top:.65rem">
+        <div class="form-group">
+          <label>{{ _('country_origin') }}</label>
+          <div class="country-picker" data-name="origem_pais"
+               data-value="{{ booking.origem_pais or default_origem_pais }}"
+               data-required="1"
+               data-placeholder="{{ _('js_country_placeholder') }}"></div>
+        </div>
+        <div class="form-group">
+          <label>{{ _('city_origin') }} *</label>
+          <div class="city-picker"
+               data-name="origem_cidade"
+               data-country-input="origem_pais"
+               data-value="{{ booking.origem_cidade or 'Maputo' }}"
+               data-required="1"
+               data-placeholder="{{ _('city_ph_origin') }}"></div>
+        </div>
+        <div class="form-group">
+          <label>{{ _('country_dest') }}</label>
+          <div class="country-picker" data-name="destino_pais"
+               data-value="{{ booking.destino_pais or '' }}"
+               data-required="1"
+               data-placeholder="{{ _('js_country_placeholder') }}"></div>
+        </div>
+        <div class="form-group">
+          <label>{{ _('city_dest') }} *</label>
+          <div class="city-picker"
+               data-name="destino_cidade"
+               data-country-input="destino_pais"
+               data-value="{{ booking.destino_cidade or '' }}"
+               data-required="1"
+               data-placeholder="{{ _('city_ph_dest') }}"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:1.25rem;padding:1rem;border-radius:14px;background:#f0f9ff;border:1px solid #bae6fd">
+      <strong style="color:var(--navy)">{{ _('dates_trip') }}</strong>
+      <div style="display:flex;gap:.65rem;flex-wrap:wrap;margin:.65rem 0">
+        <label class="ticket-option" style="flex:1;min-width:130px;margin:0">
+          <input type="radio" name="tipo_viagem" value="ida"
+                 {% if booking.tipo_viagem == 'ida' %}checked{% endif %}
+                 onchange="onTipoViagemChange()"> {{ _('one_way') }}
+        </label>
+        <label class="ticket-option" style="flex:1;min-width:130px;margin:0">
+          <input type="radio" name="tipo_viagem" value="ida_volta"
+                 {% if booking.tipo_viagem != 'ida' %}checked{% endif %}
+                 onchange="onTipoViagemChange()"> {{ _('round_trip') }}
+        </label>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="data_viagem" id="label-data-ida">{{ _('date_depart') }}</label>
+          <input id="data_viagem" type="date" name="data_viagem" required
+                 value="{{ booking.data_viagem or '' }}">
+        </div>
+        <div class="form-group" id="grupo-regresso">
+          <label for="data_regresso">{{ _('date_return') }}</label>
+          <input id="data_regresso" type="date" name="data_regresso"
+                 value="{{ booking.data_regresso or '' }}">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-grid" style="margin-bottom:1.25rem">
+      <div class="form-group">
+        <label for="n_adultos">{{ _('adults') }}</label>
+        <input id="n_adultos" type="number" name="n_adultos" min="1" max="9"
+               value="{{ booking.n_adultos or 1 }}" required>
+      </div>
+      <div class="form-group">
+        <label for="n_criancas">{{ _('children') }}</label>
+        <input id="n_criancas" type="number" name="n_criancas" min="0" max="8"
+               value="{{ booking.n_criancas or 0 }}">
+      </div>
+    </div>
+
+    <div style="margin-bottom:1.25rem">
+      <strong style="color:var(--navy)">{{ _('class_label') }}</strong>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem">
+        {% for c in classes %}
+        <label class="ticket-option" style="flex:1;min-width:110px;margin:0">
+          <input type="radio" name="classe" value="{{ c.id }}"
+                 {% if booking.classe == c.id or (not booking.classe and loop.first) %}checked{% endif %} required>
+          {{ c.nome }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="page-actions">
+      <a class="btn btn-ghost" href="{{ url_for('index') }}">{{ _('btn_back') }}</a>
+      <button class="btn btn-primary" type="submit" style="min-width:200px">{{ _('btn_search') }}</button>
+    </div>
+  </form>
+</div>
+<script>
+function onTipoViagemChange() {
+  const val = document.querySelector('input[name="tipo_viagem"]:checked')?.value || 'ida_volta';
+  const reg = document.getElementById('grupo-regresso');
+  const dr = document.getElementById('data_regresso');
+  const lab = document.getElementById('label-data-ida');
+  const I18N = window.SKYTICKET_I18N || {};
+  if (val === 'ida') {
+    reg.style.display = 'none'; dr.required = false; dr.value = '';
+    lab.textContent = I18N.date_depart_only || {{ _('date_depart_only')|tojson }};
+  } else {
+    reg.style.display = 'block'; dr.required = true;
+    lab.textContent = I18N.date_depart || {{ _('date_depart')|tojson }};
+  }
+}
+document.addEventListener('DOMContentLoaded', onTipoViagemChange);
+</script>
+{% endblock %}

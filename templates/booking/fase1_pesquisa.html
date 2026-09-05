@@ -1,0 +1,140 @@
+{% extends "booking/base_booking.html" %}
+{% block title %}Fase 1 · Pesquisa · {{ agencia }}{% endblock %}
+
+{% block phase_body %}
+<div class="phase-card">
+  <h2>🔍 Fase 1 — Pesquisa da viagem</h2>
+  <p class="card-meta" style="margin-top:-.5rem">
+    Indique o <strong>destino</strong> (autocomplete com {{ n_paises }} países),
+    <strong>datas</strong>, <strong>adultos e crianças</strong> e <strong>classe</strong>.
+    Depois clique em Pesquisar.
+  </p>
+
+  <form method="post" id="form-fase1">
+    {# Destino — autocomplete obrigatório #}
+    <div style="margin-bottom:1.25rem">
+      <strong style="color:var(--navy)">1. Destino da viagem *</strong>
+      <p class="card-meta">Clique no campo: lista de sugestões. Digite para filtrar (ex.: P → Portugal, Peru…). Só países da lista.</p>
+      <div class="form-grid" style="margin-top:.65rem">
+        <div class="form-group">
+          <label>País de destino *</label>
+          <div class="country-picker"
+               data-name="destino_pais"
+               data-value="{{ booking.destino_pais or '' }}"
+               data-required="1"
+               data-placeholder="Clique para ver os 197 países…"></div>
+        </div>
+        <div class="form-group">
+          <label for="destino_cidade">Cidade de destino</label>
+          <input id="destino_cidade" name="destino_cidade"
+                 value="{{ booking.destino_cidade or '' }}"
+                 placeholder="Ex: Lisboa, Dubai, Paris, Tóquio…">
+        </div>
+        <div class="form-group">
+          <label>País de origem *</label>
+          <div class="country-picker"
+               data-name="origem_pais"
+               data-value="{{ booking.origem_pais or 'Moçambique' }}"
+               data-required="1"
+               data-placeholder="País de origem…"></div>
+        </div>
+        <div class="form-group">
+          <label for="origem_cidade">Cidade de origem</label>
+          <input id="origem_cidade" name="origem_cidade"
+                 value="{{ booking.origem_cidade or 'Maputo' }}"
+                 placeholder="Maputo, Nampula, Beira…">
+        </div>
+      </div>
+    </div>
+
+    {# Tipo ida / ida-volta + datas #}
+    <div style="margin-bottom:1.25rem;padding:1.1rem;border-radius:14px;background:#f0f9ff;border:1px solid #bae6fd">
+      <strong style="color:var(--navy)">2. Datas da viagem *</strong>
+      <p class="card-meta" style="margin:.35rem 0 .65rem">Escolha se é só ida ou ida e volta — os campos de data adaptam-se.</p>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.85rem">
+        <label class="ticket-option" style="flex:1;min-width:140px;margin:0;cursor:pointer">
+          <input type="radio" name="tipo_viagem" value="ida"
+                 {% if booking.tipo_viagem == 'ida' %}checked{% endif %}
+                 onchange="onTipoViagemChange()">
+          ➡ Só ida
+        </label>
+        <label class="ticket-option" style="flex:1;min-width:140px;margin:0;cursor:pointer">
+          <input type="radio" name="tipo_viagem" value="ida_volta"
+                 {% if booking.tipo_viagem != 'ida' %}checked{% endif %}
+                 onchange="onTipoViagemChange()">
+          ⇄ Ida e volta
+        </label>
+      </div>
+      <div class="form-grid" id="bloco-datas">
+        <div class="form-group">
+          <label for="data_viagem" id="label-data-ida">Data de ida *</label>
+          <input id="data_viagem" type="date" name="data_viagem" required
+                 value="{{ booking.data_viagem or '' }}">
+        </div>
+        <div class="form-group" id="grupo-regresso">
+          <label for="data_regresso">Data de volta *</label>
+          <input id="data_regresso" type="date" name="data_regresso"
+                 value="{{ booking.data_regresso or '' }}">
+        </div>
+      </div>
+    </div>
+
+    {# Adultos / crianças #}
+    <div style="margin-bottom:1.25rem">
+      <strong style="color:var(--navy)">3. Passageiros *</strong>
+      <div class="form-grid" style="margin-top:.65rem">
+        <div class="form-group">
+          <label for="n_adultos">Adultos *</label>
+          <input id="n_adultos" type="number" name="n_adultos" min="1" max="9"
+                 value="{{ booking.n_adultos or 1 }}" required>
+        </div>
+        <div class="form-group">
+          <label for="n_criancas">Crianças</label>
+          <input id="n_criancas" type="number" name="n_criancas" min="0" max="8"
+                 value="{{ booking.n_criancas or 0 }}">
+          <span class="card-meta">Até 11 anos (desconto estimado de 30%)</span>
+        </div>
+      </div>
+    </div>
+
+    {# Classe #}
+    <div style="margin-bottom:1.25rem">
+      <strong style="color:var(--navy)">4. Classe pretendida *</strong>
+      <div style="display:flex;gap:.65rem;flex-wrap:wrap;margin-top:.65rem">
+        {% for c in classes %}
+        <label class="ticket-option" style="flex:1;min-width:120px;margin:0;cursor:pointer">
+          <input type="radio" name="classe" value="{{ c.id }}"
+                 {% if booking.classe == c.id or (not booking.classe and c.id == 'economica') %}checked{% endif %}
+                 required>
+          {{ c.nome }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="phase-actions">
+      <a class="btn btn-ghost" href="{{ url_for('index') }}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">🔎 Pesquisar →</button>
+    </div>
+  </form>
+</div>
+<script>
+function onTipoViagemChange() {
+  const val = document.querySelector('input[name="tipo_viagem"]:checked')?.value || 'ida_volta';
+  const reg = document.getElementById('grupo-regresso');
+  const dr = document.getElementById('data_regresso');
+  const lab = document.getElementById('label-data-ida');
+  if (val === 'ida') {
+    reg.style.display = 'none';
+    dr.required = false;
+    dr.value = '';
+    lab.textContent = 'Data de partida *';
+  } else {
+    reg.style.display = 'block';
+    dr.required = true;
+    lab.textContent = 'Data de ida *';
+  }
+}
+document.addEventListener('DOMContentLoaded', onTipoViagemChange);
+</script>
+{% endblock %}

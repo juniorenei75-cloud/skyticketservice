@@ -1,0 +1,232 @@
+{% extends "pages/base_page.html" %}
+{% block step_label %}{{ _('welcome') }}{% endblock %}
+
+{% block content %}
+{# Página 0 — só boas-vindas (idioma + continuar). O resto do site mantém o visual actual. #}
+<div class="welcome-center">
+  <p class="welcome-kicker">{{ _('welcome_kicker') }}</p>
+  <img class="brand-logo-lg welcome-logo"
+       src="{{ url_for('static', filename='img/logo-full.jpg') }}"
+       alt="SKYTICKETservice — Agência de viagens e turismo"
+       width="280" height="280">
+  <h1 class="welcome-title">
+    SKYTICKET<span>service</span>
+  </h1>
+  <p class="welcome-slogan">{{ slogan }}</p>
+  <p class="welcome-lead">{{ _('welcome_lead') }}</p>
+  <p class="welcome-tagline">{{ _('welcome_tagline') }}</p>
+
+  <div class="lang-box">
+    <p class="lang-title">{{ _('choose_language') }}</p>
+    <p class="lang-hint">{{ _('lang_hint') }}</p>
+    <div class="lang-grid">
+      {% for L in languages %}
+      <a class="lang-card {% if lang == L.code %}is-active{% endif %}"
+         href="{{ url_for('set_language', code=L.code, next=url_for('index')) }}">
+        <span class="lang-flag">{{ L.flag }}</span>
+        <span class="lang-name">{{ L.name }}</span>
+        {% if lang == L.code %}<span class="lang-check">✓</span>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="welcome-cta">
+    <a class="btn btn-gold btn-continue" href="{{ url_for('reserva_pesquisa') }}">
+      {{ _('continue') }}
+    </a>
+  </div>
+
+  <p class="welcome-meta">{{ _('locations') }}</p>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+  .page-fase0 {
+    background:
+      linear-gradient(120deg, rgba(58, 6, 28, 0.92), rgba(92, 10, 44, 0.78)),
+      url("https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1600")
+        center/cover;
+  }
+  .page-fase0 .qr-topbar {
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  }
+  .page-fase0 .qr-topbar a,
+  .page-fase0 .qr-topbar span {
+    color: rgba(255, 255, 255, 0.9) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+  }
+  .page-fase0 .qr-header {
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: none;
+  }
+  .page-fase0 .qr-brand-text strong {
+    color: #fff;
+  }
+  .page-fase0 .qr-brand-text strong span {
+    color: #e8d5a3;
+  }
+  .page-fase0 .qr-brand-text small {
+    color: rgba(255, 255, 255, 0.75);
+  }
+  .page-fase0 .qr-nav a {
+    color: rgba(255, 255, 255, 0.92);
+  }
+  .page-fase0 .qr-nav a:hover,
+  .page-fase0 .qr-nav a.active {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+    border-bottom-color: #e8d5a3;
+  }
+  .page-fase0 .qr-nav .qr-nav-cta a {
+    background: #b8965a;
+    color: #3a061c !important;
+  }
+  .page-fase0 .menu-toggle {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+  }
+  .page-fase0 .qr-footer {
+    background: transparent;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  }
+  .page-fase0 .qr-footer-bottom {
+    color: rgba(255, 255, 255, 0.75);
+  }
+  .page-fase0 .page-main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: min(720px, 94%);
+    padding: 1.5rem 0 2.5rem;
+  }
+  .welcome-center {
+    text-align: center;
+    color: #fff;
+    width: 100%;
+    padding: 0 0.5rem;
+  }
+  .welcome-kicker {
+    margin: 0 0 0.5rem;
+    font-size: 1.05rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.9;
+    font-weight: 600;
+  }
+  .welcome-logo {
+    max-width: min(260px, 70vw);
+    max-height: 150px;
+    margin: 0 auto 1rem;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  }
+  .welcome-title {
+    margin: 0 0 0.75rem;
+    font-size: clamp(2.4rem, 6.5vw, 3.5rem);
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: #fff;
+    font-family: var(--font-display, Inter, sans-serif);
+    font-weight: 800;
+  }
+  .welcome-title span {
+    color: #e8d5a3;
+  }
+  .welcome-slogan {
+    margin: 0 0 1.15rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #e8d5a3;
+  }
+  .welcome-lead {
+    margin: 0 auto 0.85rem;
+    font-size: 1.08rem;
+    opacity: 0.95;
+    max-width: 34em;
+    line-height: 1.55;
+  }
+  .welcome-tagline {
+    margin: 0 auto 1.5rem;
+    font-size: 1.05rem;
+    font-style: italic;
+    opacity: 0.9;
+    max-width: 28em;
+  }
+  .lang-box {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 4px;
+    padding: 1.15rem 1.1rem 1.25rem;
+    margin: 0 auto 1.5rem;
+    max-width: 520px;
+    backdrop-filter: blur(10px);
+  }
+  .lang-title {
+    margin: 0 0 0.35rem;
+    font-weight: 800;
+    font-size: 1rem;
+  }
+  .lang-hint {
+    margin: 0 0 0.85rem;
+    font-size: 0.85rem;
+    opacity: 0.85;
+  }
+  .lang-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
+  }
+  .lang-card {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 2px solid transparent;
+    color: #fff;
+    text-decoration: none !important;
+    font-weight: 700;
+    font-size: 0.92rem;
+    transition: 0.15s ease;
+  }
+  .lang-card:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+  }
+  .lang-card.is-active {
+    border-color: #e8d5a3;
+    background: rgba(184, 150, 90, 0.28);
+  }
+  .lang-flag { font-size: 1.25rem; }
+  .lang-name { flex: 1; text-align: left; }
+  .lang-check {
+    color: #e8d5a3;
+    font-weight: 900;
+  }
+  .welcome-cta { margin-bottom: 1.5rem; }
+  .btn-continue {
+    font-size: 1.05rem;
+    padding: 1rem 2.75rem;
+    min-width: 220px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    box-shadow: 0 12px 32px rgba(184, 150, 90, 0.4);
+  }
+  .btn-continue:hover { transform: translateY(-2px); }
+  .welcome-meta {
+    margin: 0;
+    font-size: 0.9rem;
+    opacity: 0.8;
+  }
+  @media (max-width: 480px) {
+    .lang-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}

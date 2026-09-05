@@ -1,0 +1,145 @@
+{% extends "booking/base_booking.html" %}
+{% block title %}Fase 4 · Assentos · {{ agencia }}{% endblock %}
+
+{% block phase_body %}
+<div class="phase-card">
+  <h2>💺 Fase 4 — Escolha dos assentos</h2>
+
+  {% if is_pacote %}
+  <p class="card-meta" style="margin-top:-.5rem">
+    Seleccionou um <strong>pacote turístico</strong>. Não há mapa de avião obrigatório;
+    os lugares aéreos serão atribuídos na emissão dos bilhetes pela agência.
+  </p>
+  <div class="phase-summary">
+    <strong>{{ booking.ticket_label }}</strong> · Classe {{ booking.classe_nome }}
+  </div>
+  <form method="post">
+    <div class="phase-actions">
+      <a class="btn btn-ghost" href="{{ url_for('reserva_fase', fase=3) }}">← Passageiros</a>
+      <button class="btn btn-primary" type="submit">Continuar para Confirmação →</button>
+    </div>
+  </form>
+
+  {% else %}
+  <p class="card-meta" style="margin-top:-.5rem">
+    Escolha os lugares no avião conforme a disponibilidade e a classe
+    <strong>{{ booking.classe_nome }}</strong>
+    ({{ n_pax }} passageiro(s)).
+  </p>
+
+  <div class="phase-summary">
+    <strong>{{ booking.ticket_label }}</strong> · {{ booking.ticket_companhia }}
+    · Classe {{ booking.classe_nome }}
+    <br>
+    Ida {{ booking.data_viagem }}{% if booking.data_regresso %} · Volta {{ booking.data_regresso }}{% endif %}
+  </div>
+
+  <div class="seat-legend">
+    <span><button type="button" class="seat" style="width:28px;height:28px;pointer-events:none"></button> Livre</span>
+    <span><button type="button" class="seat selected" style="width:28px;height:28px;pointer-events:none"></button> Seu</span>
+    <span><button type="button" class="seat occupied" style="width:28px;height:28px;pointer-events:none">×</button> Ocupado</span>
+  </div>
+
+  <form method="post" id="seat-form">
+    <h3 style="color:var(--navy);font-size:1.05rem">
+      ✈ Ida — {{ booking.classe_nome }}
+      (<span id="sel-count">{{ selected|length }}</span>/{{ n_pax }})
+    </h3>
+    <div class="seat-map" id="seat-map" data-max="{{ n_pax }}" data-name="assentos">
+      {% for row in layout.rows %}
+      <div class="seat-row" style="grid-template-columns: 2rem repeat({{ layout.cols|length // 2 }}, 1fr) 1.2rem repeat({{ layout.cols|length - layout.cols|length // 2 }}, 1fr);">
+        <span class="row-num">{{ row }}</span>
+        {% for col in layout.cols %}
+          {% set seat = row|string + col %}
+          {% if loop.index0 == (layout.cols|length // 2) %}<span class="seat-aisle"></span>{% endif %}
+          <button type="button"
+                  class="seat {% if seat in layout.occupied %}occupied{% endif %} {% if seat in selected %}selected{% endif %}"
+                  data-seat="{{ seat }}"
+                  {% if seat in layout.occupied %}disabled{% endif %}>{{ col }}</button>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    <div id="hidden-seats"></div>
+
+    {% if round_trip and layout_volta %}
+    <hr style="border:none;border-top:1px solid var(--border);margin:1.5rem 0">
+    <h3 style="color:var(--navy);font-size:1.05rem">
+      ↩ Volta
+      (<span id="sel-count-volta">{{ selected_volta|length }}</span>/{{ n_pax }})
+    </h3>
+    <div class="seat-map" id="seat-map-volta" data-max="{{ n_pax }}" data-name="assentos_volta">
+      {% for row in layout_volta.rows %}
+      <div class="seat-row">
+        <span class="row-num">{{ row }}</span>
+        {% for col in layout_volta.cols %}
+          {% set seat = row|string + col %}
+          {% if loop.index0 == (layout_volta.cols|length // 2) %}<span class="seat-aisle"></span>{% endif %}
+          <button type="button"
+                  class="seat {% if seat in layout_volta.occupied %}occupied{% endif %} {% if seat in selected_volta %}selected{% endif %}"
+                  data-seat="{{ seat }}"
+                  {% if seat in layout_volta.occupied %}disabled{% endif %}>{{ col }}</button>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    <div id="hidden-seats-volta"></div>
+    {% endif %}
+
+    <div class="phase-actions">
+      <a class="btn btn-ghost" href="{{ url_for('reserva_fase', fase=3) }}">← Passageiros</a>
+      <button class="btn btn-primary" type="submit">Continuar para Confirmação →</button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if not is_pacote %}
+<script>
+(function () {
+  function wireMap(mapId, hiddenId, countId) {
+    const map = document.getElementById(mapId);
+    const hidden = document.getElementById(hiddenId);
+    const countEl = document.getElementById(countId);
+    if (!map || !hidden) return { size: () => 0, max: 0 };
+    const max = parseInt(map.dataset.max, 10) || 1;
+    const name = map.dataset.name || "assentos";
+    let selected = new Set(Array.from(map.querySelectorAll(".seat.selected")).map(b => b.dataset.seat));
+    function sync() {
+      if (countEl) countEl.textContent = selected.size;
+      hidden.innerHTML = "";
+      selected.forEach(s => {
+        const i = document.createElement("input");
+        i.type = "hidden"; i.name = name; i.value = s;
+        hidden.appendChild(i);
+      });
+    }
+    map.querySelectorAll(".seat:not(.occupied)").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const seat = btn.dataset.seat;
+        if (selected.has(seat)) { selected.delete(seat); btn.classList.remove("selected"); }
+        else {
+          if (selected.size >= max) { alert("Já escolheu " + max + " assento(s)."); return; }
+          selected.add(seat); btn.classList.add("selected");
+        }
+        sync();
+      });
+    });
+    sync();
+    return { size: () => selected.size, max };
+  }
+  const ida = wireMap("seat-map", "hidden-seats", "sel-count");
+  const volta = wireMap("seat-map-volta", "hidden-seats-volta", "sel-count-volta");
+  const form = document.getElementById("seat-form");
+  if (form) form.addEventListener("submit", e => {
+    if (ida.size() !== ida.max) { e.preventDefault(); alert("Seleccione " + ida.max + " assento(s) de ida."); return; }
+    if (document.getElementById("seat-map-volta") && volta.size() !== volta.max) {
+      e.preventDefault(); alert("Seleccione " + volta.max + " assento(s) de volta.");
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

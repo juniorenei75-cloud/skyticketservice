@@ -1,0 +1,113 @@
+{% extends "booking/base_booking.html" %}
+{% block title %}Fase 4 · Revisão · {{ agencia }}{% endblock %}
+
+{% block phase_body %}
+<div class="phase-card">
+  <h2>📋 Fase 4 — Revisão e confirmação</h2>
+  <p class="card-meta" style="margin-top:-.5rem">
+    Confira todos os dados antes de enviar o pedido à agência.
+  </p>
+
+  <div class="review-grid">
+    <div class="review-row">
+      <div class="label">Tipo</div>
+      <div class="value">
+        {% if booking.modo == 'mundo' or booking.tipo == 'mundo' %}
+          Viagem mundial (qualquer país)
+        {% elif booking.tipo == 'voo' %}
+          Voo / bilhete
+        {% else %}
+          Pacote
+        {% endif %}
+      </div>
+    </div>
+    <div class="review-row">
+      <div class="label">Tipo de viagem</div>
+      <div class="value">
+        {% if round_trip or booking.tipo_viagem == 'ida_volta' %}
+        <span class="badge badge-gold">⇄ Ida e volta</span>
+        {% else %}
+        <span class="badge">➡ Só ida</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="review-row">
+      <div class="label">Rota / detalhe</div>
+      <div class="value">{{ route_label }}</div>
+    </div>
+    <div class="review-row">
+      <div class="label">Data de ida</div>
+      <div class="value">{{ booking.data_viagem }}</div>
+    </div>
+    {% if booking.tipo_viagem == 'ida_volta' and booking.data_regresso %}
+    <div class="review-row">
+      <div class="label">Data de regresso</div>
+      <div class="value">{{ booking.data_regresso }}</div>
+    </div>
+    {% endif %}
+    <div class="review-row">
+      <div class="label">Assentos ida</div>
+      <div class="value">{{ booking.assentos|join(', ') }}</div>
+    </div>
+    {% if booking.assentos_volta %}
+    <div class="review-row">
+      <div class="label">Assentos volta</div>
+      <div class="value">{{ booking.assentos_volta|join(', ') }}</div>
+    </div>
+    {% endif %}
+    <div class="review-row">
+      <div class="label">Passageiros</div>
+      <div class="value">
+        {% for p in booking.passageiros %}
+          {{ loop.index }}. {{ p.nome }}
+          {% if p.assento %}(assento {{ p.assento }}){% endif %}
+          {% if p.documento %} · doc. {{ p.documento }}{% endif %}
+          <br>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="review-row">
+      <div class="label">Contacto</div>
+      <div class="value">
+        {{ booking.passageiros[0].email }}
+        {% if booking.passageiros[0].telefone %} · {{ booking.passageiros[0].telefone }}{% endif %}
+      </div>
+    </div>
+    {% if booking.observacoes %}
+    <div class="review-row">
+      <div class="label">Observações</div>
+      <div class="value">{{ booking.observacoes }}</div>
+    </div>
+    {% endif %}
+    <div class="review-row">
+      <div class="label">Preço</div>
+      <div class="value">
+        {% if cotacao %}
+          <span class="badge badge-gold">Cotação personalizada</span>
+          — a agência envia o valor exacto
+        {% else %}
+          {{ unit|money(moeda) }} × {{ booking.n_passageiros }} pax
+          {% if trechos and trechos > 1 %} × {{ trechos }} trechos (ida+volta){% endif %}
+        {% endif %}
+      </div>
+    </div>
+    <div class="review-row">
+      <div class="label">Total estimado</div>
+      <div class="value" style="font-size:1.25rem;color:var(--sky)">
+        {% if cotacao %}A cotar{% else %}{{ total|money(moeda) }}{% endif %}
+      </div>
+    </div>
+    <div class="review-row">
+      <div class="label">Estado após envio</div>
+      <div class="value"><span class="badge badge-warning">pendente</span> — a agência confirma a seguir</div>
+    </div>
+  </div>
+
+  <form method="post">
+    <div class="phase-actions">
+      <a class="btn btn-ghost" href="{{ url_for('reserva_fase', fase=3) }}">← Voltar aos passageiros</a>
+      <button class="btn btn-primary" type="submit">✓ Confirmar e enviar pedido</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Hotéis · {{ agencia }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container">
+    <h1>Hotéis parceiros</h1>
+    <p>Alojamento seleccionado para a sua estadia</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <form method="get" class="form-card" style="max-width:100%;margin-bottom:1.5rem;display:flex;gap:.75rem;align-items:end;flex-wrap:wrap;padding:1rem 1.25rem">
+      <div class="form-group" style="flex:1;min-width:200px;margin:0">
+        <label for="cidade">Cidade</label>
+        <input list="cidades-h" id="cidade" name="cidade" value="{{ cidade or '' }}" placeholder="Maputo">
+        <datalist id="cidades-h">
+          {% for c in cidades %}<option value="{{ c }}">{% endfor %}
+        </datalist>
+      </div>
+      <button class="btn btn-primary" type="submit">Filtrar</button>
+      {% if cidade %}<a class="btn btn-ghost" href="{{ url_for('hoteis') }}">Limpar</a>{% endif %}
+    </form>
+
+    <div class="grid grid-3">
+      {% for h in hoteis %}
+      <article class="card">
+        <div class="card-body">
+          <span class="badge badge-gold">{{ '★' * h.estrelas }}</span>
+          <h3>{{ h.nome }}</h3>
+          <div class="card-meta">📍 {{ h.cidade }}</div>
+          <p class="card-meta">{{ h.descricao or '' }}</p>
+          <div class="card-price">{{ h.preco_noite|money(h.moeda) }} <span>/ noite</span></div>
+          <div class="card-actions">
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('contacto') }}">Pedir cotação</a>
+          </div>
+        </div>
+      </article>
+      {% else %}
+      <div class="empty" style="grid-column:1/-1">Nenhum hotel encontrado.</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

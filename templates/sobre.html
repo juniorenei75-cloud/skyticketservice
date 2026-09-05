@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ _('nav_about') }} · {{ agencia }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container">
+    <h1>{{ _('about_title') }} — SKYTICKETservice</h1>
+    <p>{{ slogan }}</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <div class="form-card" style="max-width:800px">
+      <h2 style="margin-top:0;color:var(--navy)">{{ _('about_title') }}</h2>
+      <p>{{ _('about_body') }}</p>
+      <h3 style="color:var(--navy)">{{ _('mission') }}</h3>
+      <p>{{ _('mission_body') }}</p>
+      <h3 style="color:var(--navy)">{{ _('what_we_do') }}</h3>
+      <ul>
+        <li>LAM, TAP, Emirates, Turkish, Qatar, Ethiopian…</li>
+        <li>SKYTICKETservice</li>
+      </ul>
+      <h3 style="color:var(--navy)">{{ _('where_we_are') }}</h3>
+      <p>
+        <strong>{{ contacto.local_principal }}</strong><br>
+        {{ contacto.locais }}<br>
+        <strong>{{ _('email')|replace(' *','') }}:</strong> {{ contacto.email }}<br>
+        <strong>{{ _('phone')|replace(' *','') }}:</strong> {{ contacto.telefone }}
+      </p>
+      <a class="btn btn-primary" href="{{ url_for('contacto') }}">{{ _('nav_contact') }}</a>
+      <a class="btn btn-ghost" href="{{ contacto.whatsapp_link }}" target="_blank" rel="noopener">WhatsApp</a>
+      <a class="btn btn-ghost" href="{{ url_for('reserva_pesquisa') }}">{{ _('nav_book') }}</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

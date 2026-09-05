@@ -1,0 +1,66 @@
+{% extends "booking/base_booking.html" %}
+{% block title %}Fase 2 · Bilhetes e pacotes · {{ agencia }}{% endblock %}
+
+{% block phase_body %}
+<div class="phase-card">
+  <h2>🎫 Fase 2 — Bilhetes e pacotes disponíveis</h2>
+  <p class="card-meta" style="margin-top:-.5rem">
+    Opções com preços, horários, companhias e detalhes conforme a sua pesquisa.
+    Escolha um bilhete ou pacote.
+  </p>
+
+  <div class="phase-summary">
+    <strong>Destino:</strong> {{ booking.destino_cidade }}{% if booking.destino_pais %}, {{ booking.destino_pais }}{% endif %}
+    · <strong>De:</strong> {{ booking.origem_cidade }}, {{ booking.origem_pais }}
+    <br>
+    {% if round_trip %}<span class="badge badge-gold">⇄ Ida e volta</span>
+    {% else %}<span class="badge">➡ Só ida</span>{% endif %}
+    · Ida {{ booking.data_viagem }}
+    {% if booking.data_regresso %} · Volta {{ booking.data_regresso }}{% endif %}
+    · {{ booking.n_adultos }} adulto(s)
+    {% if booking.n_criancas %} · {{ booking.n_criancas }} criança(s){% endif %}
+    · Classe <strong>{{ booking.classe_nome }}</strong>
+  </div>
+
+  <form method="post">
+    {% for t in tickets %}
+    <label class="ticket-option" style="display:block;margin-bottom:.75rem">
+      <input type="radio" name="ticket_uid" value="{{ t.uid }}"
+             {% if loop.first %}checked{% endif %} required>
+      <span class="price">
+        {% if t.preco and t.preco > 0 %}
+          {{ t.preco|money(t.moeda) }}
+          <span style="font-size:.72rem;font-weight:500">/ adulto</span>
+        {% else %}
+          Cotação
+        {% endif %}
+      </span>
+      <strong>
+        {% if t.kind == 'pacote' %}🧳 Pacote:{% elif t.kind == 'cotacao' %}🌍{% else %}✈{% endif %}
+        {{ t.label }}
+      </strong>
+      {% if t.kind == 'cotacao' %}<span class="badge badge-gold">Personalizado</span>{% endif %}
+      {% if t.kind == 'pacote' %}<span class="badge">Pacote</span>{% endif %}
+      {% if t.kind == 'voo' %}<span class="badge badge-muted">Voo</span>{% endif %}
+      <br>
+      <span class="card-meta">
+        <strong>{{ t.companhia }}</strong>
+        · Classe {{ t.classe }}
+        · Horário: {{ t.horario }}
+        · Duração: {{ t.duracao }}
+      </span>
+      {% if t.detalhes %}
+      <div class="card-meta" style="margin-top:.25rem">{{ t.detalhes }}</div>
+      {% endif %}
+    </label>
+    {% else %}
+    <div class="empty">Nenhuma opção encontrada. Volte e altere a pesquisa.</div>
+    {% endfor %}
+
+    <div class="phase-actions">
+      <a class="btn btn-ghost" href="{{ url_for('reserva_fase', fase=1) }}">← Alterar pesquisa</a>
+      <button class="btn btn-primary" type="submit">Continuar para Passageiros →</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Admin{% endblock %} · SKYTICKETservice</title>
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='img/logo.jpg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="admin-body">
+  <div class="admin-shell">
+    <aside class="admin-side">
+      <a class="brand" href="{{ url_for('admin_dashboard') }}">
+        <span class="brand-mark">
+          <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="SKYTICKETservice" width="48" height="48">
+        </span>
+        <span>
+          SKYTICKET<span style="color:#7ec8ff">service</span>
+          <small>Painel Admin</small>
+        </span>
+      </a>
+      <ul class="admin-nav">
+        <li><a href="{{ url_for('admin_dashboard') }}" class="{% if request.endpoint == 'admin_dashboard' %}active{% endif %}">📊 Dashboard</a></li>
+        <li><a href="{{ url_for('admin_reservas') }}" class="{% if request.endpoint and 'reserva' in request.endpoint %}active{% endif %}">📋 Reservas</a></li>
+        <li><a href="{{ url_for('admin_pacotes') }}" class="{% if request.endpoint and 'pacote' in request.endpoint %}active{% endif %}">🧳 Pacotes</a></li>
+        <li><a href="{{ url_for('admin_voos') }}" class="{% if request.endpoint == 'admin_voos' or (request.endpoint and 'admin_voo_' in request.endpoint) %}active{% endif %}">✈ Voos catálogo</a></li>
+        <li><a href="{{ url_for('admin_voos_api') }}" class="{% if request.endpoint == 'admin_voos_api' %}active{% endif %}">🌐 Voos tempo real</a></li>
+        <li><a href="{{ url_for('admin_clientes') }}" class="{% if request.endpoint == 'admin_clientes' %}active{% endif %}">👥 Clientes</a></li>
+        <li><a href="{{ url_for('admin_mensagens') }}" class="{% if request.endpoint and 'mensagem' in request.endpoint %}active{% endif %}">✉ Mensagens</a></li>
+        <li><a href="{{ url_for('admin_whatsapp') }}" class="{% if request.endpoint == 'admin_whatsapp' %}active{% endif %}">📱 WhatsApp</a></li>
+        <li><a href="{{ url_for('admin_smtp') }}" class="{% if request.endpoint == 'admin_smtp' %}active{% endif %}">✉ E-mail / SMTP</a></li>
+        <li><a href="{{ url_for('admin_pagamentos') }}" class="{% if request.endpoint == 'admin_pagamentos' %}active{% endif %}">💳 Pagamentos</a></li>
+        <li><a href="{{ url_for('index') }}" target="_blank">🌐 Ver site</a></li>
+        <li><a href="{{ url_for('admin_logout') }}">↩ Sair</a></li>
+      </ul>
+    </aside>
+
+    <div class="admin-main">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flashes" style="width:100%;margin:0 0 1rem">
+            {% for category, message in messages %}
+              <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

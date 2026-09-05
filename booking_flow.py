@@ -235,7 +235,17 @@ PREMIUM_CODES = {
 }
 
 
+# Incrementar quando mudar defaults de formulário (força sessão limpa)
+BOOKING_FORM_VERSION = 2
+
+
 def _get_booking() -> dict:
+    if session.get("booking_form_version") != BOOKING_FORM_VERSION:
+        b = _empty_booking()
+        session["booking"] = b
+        session["booking_form_version"] = BOOKING_FORM_VERSION
+        session.modified = True
+        return b
     b = session.get("booking")
     if not isinstance(b, dict):
         b = _empty_booking()

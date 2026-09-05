@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
 
-# Quando o site estiver online, o sitemap fica em:
-Sitemap: https://www.skyticketservice.com/sitemap.xml
+Sitemap: https://skyticketservice.onrender.com/sitemap.xml

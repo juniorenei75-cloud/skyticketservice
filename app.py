@@ -233,8 +233,8 @@ def robots_txt():
 
 @app.route("/sitemap.xml")
 def sitemap_xml():
-    """Sitemap para motores de busca (usa o domínio oficial da marca)."""
-    base = "https://www.skyticketservice.com"
+    """Sitemap para motores de busca (domínio live / SITE_URL)."""
+    base = (os.environ.get("SITE_URL") or request.url_root.rstrip("/")).rstrip("/")
     pages = [
         ("/", "1.0", "daily"),
         ("/destinos", "1.0", "weekly"),

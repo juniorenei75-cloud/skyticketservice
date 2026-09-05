@@ -1794,6 +1794,18 @@ def register_booking_routes(app, gerar_codigo):
             codigo,
             html_ticket,
             nome=principal.get("nome") or "",
+            reserva=res_row,
+            passageiros_txt=pax_lines,
+            pagamento=metodo_nome,
+            extras={
+                "ticket_companhia": booking.get("ticket_companhia") or "",
+                "ticket_flight_no": booking.get("ticket_flight_no") or "",
+                "ticket_horario": booking.get("ticket_horario") or "",
+                "ticket_horario_chegada": booking.get("ticket_horario_chegada")
+                or "",
+                "ticket_duracao": booking.get("ticket_duracao") or "",
+                "classe_nome": booking.get("classe_nome") or "",
+            },
         )
 
         detalhe = (
@@ -1841,6 +1853,18 @@ def register_booking_routes(app, gerar_codigo):
                     codigo,
                     html_ticket,
                     nome=f"ADMIN — {principal.get('nome') or ''}",
+                    reserva=res_row,
+                    passageiros_txt=pax_lines,
+                    pagamento=metodo_nome,
+                    extras={
+                        "ticket_companhia": booking.get("ticket_companhia") or "",
+                        "ticket_flight_no": booking.get("ticket_flight_no") or "",
+                        "ticket_horario": booking.get("ticket_horario") or "",
+                        "ticket_horario_chegada": booking.get("ticket_horario_chegada")
+                        or "",
+                        "ticket_duracao": booking.get("ticket_duracao") or "",
+                        "classe_nome": booking.get("classe_nome") or "",
+                    },
                 )
         except Exception as exc:  # noqa: BLE001
             admin_email_msg = str(exc)

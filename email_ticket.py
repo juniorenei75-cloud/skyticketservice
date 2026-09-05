@@ -19,6 +19,7 @@ import smtplib
 import ssl
 import urllib.error
 import urllib.request
+from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
@@ -31,8 +32,19 @@ TICKETS_DIR = Path(__file__).resolve().parent / "tickets"
 CONFIG_PATH = Path(__file__).resolve().parent / "smtp_config.json"
 LOGO_PATH = Path(__file__).resolve().parent / "static" / "img" / "logo.jpg"
 LOGO_FULL_PATH = Path(__file__).resolve().parent / "static" / "img" / "logo-full.jpg"
+LOGO_EMAIL_PATH = Path(__file__).resolve().parent / "static" / "img" / "logo-email.png"
 
 _logo_data_uri_cache: str | None = None
+_logo_email_data_uri_cache: str | None = None
+_AGENCY_WA = "+258 84 905 3340"
+_AGENCY_MAIL = "skyticketservicee@gmail.com"
+
+
+def _html_escape(value: Any) -> str:
+    from html import escape
+
+    return escape(str(value if value is not None else ""), quote=True)
+
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "enabled": True,
@@ -233,6 +245,29 @@ def logo_data_uri() -> str:
                 logger.warning("Não foi possível ler o logotipo: %s", exc)
 
     _logo_data_uri_cache = ""
+    return ""
+
+
+
+def logo_email_data_uri() -> str:
+    """Logotipo pequeno (~8KB) para e-mail — nunca usar logo.jpg completo."""
+    global _logo_email_data_uri_cache
+    if _logo_email_data_uri_cache is not None:
+        return _logo_email_data_uri_cache
+    path = LOGO_EMAIL_PATH
+    if path.exists():
+        try:
+            raw = path.read_bytes()
+            if len(raw) > 20_000:
+                logger.warning("logo-email.png demasiado grande (%s bytes); a ignorar.", len(raw))
+            else:
+                mime = "image/png" if path.suffix.lower() == ".png" else "image/jpeg"
+                b64 = base64.b64encode(raw).decode("ascii")
+                _logo_email_data_uri_cache = f"data:{mime};base64,{b64}"
+                return _logo_email_data_uri_cache
+        except OSError as exc:
+            logger.warning("Não foi possível ler logo-email: %s", exc)
+    _logo_email_data_uri_cache = ""
     return ""
 
 
@@ -954,6 +989,7 @@ def _send_via_brevo(
     text_body: str,
     html_body: str,
     cfg: dict[str, Any],
+    attachments: list[dict[str, Any]] | None = None,
 ) -> tuple[bool, str]:
     api_key = (cfg.get("brevo_api_key") or "").strip()
     if not api_key:
@@ -976,6 +1012,24 @@ def _send_via_brevo(
         admin = (cfg.get("admin_email") or mail_from).strip()
         if admin and admin.lower() != to_email.strip().lower():
             payload["bcc"] = [{"email": admin}]
+    if attachments:
+        att_out = []
+        for att in attachments:
+            raw = att.get("content")
+            if raw is None:
+                continue
+            if isinstance(raw, bytes):
+                b64 = base64.b64encode(raw).decode("ascii")
+            else:
+                b64 = str(raw)
+            att_out.append(
+                {
+                    "name": att.get("filename") or "attachment.bin",
+                    "content": b64,
+                }
+            )
+        if att_out:
+            payload["attachment"] = att_out
 
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
@@ -1017,8 +1071,13 @@ def _send_via_gmail_relay(
     text_body: str,
     html_body: str,
     cfg: dict[str, Any],
+    attachments: list[dict[str, Any]] | None = None,
 ) -> tuple[bool, str]:
-    """Envia via Google Apps Script (GmailApp) — HTTPS, sem SMTP."""
+    """Envia via Google Apps Script (GmailApp) — HTTPS, sem SMTP.
+
+    attachments: lista de dicts {filename, content(bytes|str base64), mime_type}.
+    Requer Apps Script actualizado (ver gmail_apps_script/Code.gs).
+    """
     url = (cfg.get("gmail_relay_url") or "").strip()
     secret = (cfg.get("gmail_relay_secret") or "").strip()
     if not url:
@@ -1039,6 +1098,25 @@ def _send_via_gmail_relay(
         admin = (cfg.get("admin_email") or cfg.get("mail_from") or "").strip()
         if admin and admin.lower() != to_email.strip().lower():
             payload["bcc"] = admin
+    if attachments:
+        att_out = []
+        for att in attachments:
+            raw = att.get("content")
+            if raw is None:
+                continue
+            if isinstance(raw, bytes):
+                b64 = base64.b64encode(raw).decode("ascii")
+            else:
+                b64 = str(raw)
+            att_out.append(
+                {
+                    "filename": att.get("filename") or "attachment.bin",
+                    "mimeType": att.get("mime_type") or att.get("mimeType") or "application/octet-stream",
+                    "content": b64,
+                }
+            )
+        if att_out:
+            payload["attachments"] = att_out
 
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
@@ -1079,6 +1157,7 @@ def _send_via_sendgrid(
     text_body: str,
     html_body: str,
     cfg: dict[str, Any],
+    attachments: list[dict[str, Any]] | None = None,
 ) -> tuple[bool, str]:
     api_key = (cfg.get("sendgrid_api_key") or "").strip()
     if not api_key:
@@ -1107,6 +1186,26 @@ def _send_via_sendgrid(
         ],
         "reply_to": {"email": mail_from, "name": from_name},
     }
+    if attachments:
+        att_out = []
+        for att in attachments:
+            raw = att.get("content")
+            if raw is None:
+                continue
+            if isinstance(raw, bytes):
+                b64 = base64.b64encode(raw).decode("ascii")
+            else:
+                b64 = str(raw)
+            att_out.append(
+                {
+                    "content": b64,
+                    "type": att.get("mime_type") or att.get("mimeType") or "application/pdf",
+                    "filename": att.get("filename") or "attachment.bin",
+                    "disposition": "attachment",
+                }
+            )
+        if att_out:
+            payload["attachments"] = att_out
 
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
@@ -1177,6 +1276,7 @@ def _send_via_smtp(
     text_body: str,
     html_body: str,
     cfg: dict[str, Any],
+    attachments: list[dict[str, Any]] | None = None,
 ) -> tuple[bool, str]:
     host = (cfg.get("host") or "").strip()
     port = int(cfg.get("port") or 587)
@@ -1198,8 +1298,32 @@ def _send_via_smtp(
             msg["Bcc"] = admin
             recipients.append(admin)
 
-    msg.attach(MIMEText(text_body, "plain", "utf-8"))
-    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    if attachments:
+        mixed = MIMEMultipart("mixed")
+        for k in ("Subject", "From", "To", "Reply-To", "Bcc"):
+            if k in msg:
+                mixed[k] = msg[k]
+        alt = MIMEMultipart("alternative")
+        alt.attach(MIMEText(text_body, "plain", "utf-8"))
+        alt.attach(MIMEText(html_body, "html", "utf-8"))
+        mixed.attach(alt)
+        for att in attachments:
+            raw_c = att.get("content")
+            if raw_c is None:
+                continue
+            if isinstance(raw_c, str):
+                raw_c = base64.b64decode(raw_c)
+            part = MIMEApplication(raw_c, _subtype=(att.get("mime_type") or "application/pdf").split("/")[-1])
+            part.add_header(
+                "Content-Disposition",
+                "attachment",
+                filename=att.get("filename") or "attachment.bin",
+            )
+            mixed.attach(part)
+        msg = mixed
+    else:
+        msg.attach(MIMEText(text_body, "plain", "utf-8"))
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
     raw = msg.as_string()
 
     # Tentar a config pedida e, se falhar por ligação, a alternativa 465/587
@@ -1267,6 +1391,7 @@ def _send_raw(
     text_body: str,
     html_body: str,
     cfg: dict[str, Any] | None = None,
+    attachments: list[dict[str, Any]] | None = None,
 ) -> tuple[bool, str]:
     cfg = cfg or load_smtp_config()
     ready, reason = smtp_is_ready(cfg)
@@ -1284,6 +1409,7 @@ def _send_raw(
             text_body=text_body,
             html_body=html_body,
             cfg=cfg,
+            attachments=attachments,
         )
 
     # Preferência: SendGrid quando seleccionado
@@ -1294,6 +1420,7 @@ def _send_raw(
             text_body=text_body,
             html_body=html_body,
             cfg=cfg,
+            attachments=attachments,
         )
 
     if provider == "brevo":
@@ -1303,6 +1430,7 @@ def _send_raw(
             text_body=text_body,
             html_body=html_body,
             cfg=cfg,
+            attachments=attachments,
         )
         # Fallback documentado: se Brevo falhar por activação e houver SendGrid
         if (
@@ -1319,6 +1447,7 @@ def _send_raw(
                 text_body=text_body,
                 html_body=html_body,
                 cfg=cfg,
+                attachments=attachments,
             )
             if ok2:
                 return True, msg2 + " (Brevo falhou por activação; usado SendGrid.)"
@@ -1340,6 +1469,7 @@ def _send_raw(
                 text_body=text_body,
                 html_body=html_body,
                 cfg=cfg,
+                attachments=attachments,
             )
             if ok3:
                 return True, msg3 + " (Brevo falhou; usado Gmail Relay.)"
@@ -1369,6 +1499,7 @@ def _send_raw(
                 text_body=text_body,
                 html_body=html_body,
                 cfg=cfg,
+                attachments=attachments,
             )
             if ok2:
                 return True, msg2 + " (SMTP falhou; usado SendGrid.)"
@@ -1381,12 +1512,661 @@ def _send_raw(
                 text_body=text_body,
                 html_body=html_body,
                 cfg=cfg,
+                attachments=attachments,
             )
             if ok3:
                 return True, msg3 + " (SMTP falhou; usado Brevo.)"
             return False, f"{msg} | Fallback Brevo: {msg3}"
     return ok, msg
 
+
+
+
+def _email_brand_header_html(subtitle: str = "Agência de viagens") -> str:
+    """Cabeçalho de marca partilhado (tabelas + estilos inline)."""
+    logo = logo_email_data_uri()
+    if logo:
+        brand_cell = (
+            f'<img src="{logo}" alt="SKYTICKETservice" width="96" height="54" '
+            f'style="display:block;border:0;outline:none;height:auto;max-width:96px">'
+        )
+    else:
+        brand_cell = (
+            '<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:20px;'
+            'font-weight:700;letter-spacing:0.04em;color:#ffffff;line-height:1.2">'
+            'SKY<span style="color:#e8d5a3">TICKET</span>service</div>'
+        )
+    sub = _html_escape(subtitle)
+    return f"""
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background:#5c0a2c;border-collapse:collapse">
+  <tr>
+    <td style="padding:18px 22px 14px 22px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="vertical-align:middle;width:110px">{brand_cell}</td>
+          <td style="vertical-align:middle;padding-left:14px">
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:18px;
+                        font-weight:700;color:#ffffff;letter-spacing:0.03em">
+              SKYTICKETservice
+            </div>
+            <div style="font-family:Segoe UI,Helvetica Neue,Arial,sans-serif;font-size:12px;
+                        color:#e8d5a3;margin-top:3px;letter-spacing:0.06em;text-transform:uppercase">
+              {sub}
+            </div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="height:3px;line-height:3px;font-size:0;background-color:#c9a227">&nbsp;</td>
+  </tr>
+</table>
+"""
+
+
+def _email_brand_footer_html() -> str:
+    return f"""
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background:#5c0a2c;border-collapse:collapse">
+  <tr>
+    <td style="height:3px;line-height:3px;font-size:0;background-color:#c9a227">&nbsp;</td>
+  </tr>
+  <tr>
+    <td style="padding:18px 22px;font-family:Segoe UI,Helvetica Neue,Arial,sans-serif;
+               color:#ffffff;font-size:12px;line-height:1.55;text-align:center">
+      <strong style="color:#e8d5a3;letter-spacing:0.04em">SKYTICKETservice</strong><br>
+      <a href="mailto:{_AGENCY_MAIL}" style="color:#ffffff;text-decoration:underline">{_AGENCY_MAIL}</a>
+      &nbsp;·&nbsp;
+      <a href="https://wa.me/258849053340" style="color:#e8d5a3;text-decoration:none">WhatsApp {_AGENCY_WA}</a><br>
+      <span style="color:#e8d5a3">Nampula · Maputo · Beira · Online · 24h</span>
+    </td>
+  </tr>
+</table>
+"""
+
+
+def _email_shell(inner_html: str, preview_text: str = "") -> str:
+    """Envelope 600px email-safe (tabelas + inline)."""
+    pre = _html_escape(preview_text) if preview_text else ""
+    pre_block = ""
+    if pre:
+        pre_block = (
+            f'<div style="display:none;font-size:1px;line-height:1px;max-height:0;'
+            f'max-width:0;opacity:0;overflow:hidden;mso-hide:all">{pre}</div>'
+        )
+    return f"""<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>SKYTICKETservice</title>
+</head>
+<body style="margin:0;padding:0;background:#f3eee9;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%">
+{pre_block}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background:#f3eee9;border-collapse:collapse">
+  <tr>
+    <td align="center" style="padding:24px 12px">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+             style="width:100%;max-width:600px;background:#ffffff;border-collapse:collapse;
+                    border:1px solid #e5d9d0">
+        <tr><td>{_email_brand_header_html()}</td></tr>
+        <tr><td style="padding:0;font-family:Segoe UI,Helvetica Neue,Arial,sans-serif;color:#1a1a1a">
+          {inner_html}
+        </td></tr>
+        <tr><td>{_email_brand_footer_html()}</td></tr>
+      </table>
+      <div style="font-family:Segoe UI,Arial,sans-serif;font-size:11px;color:#8a7a72;
+                  margin-top:14px;text-align:center">
+        Mensagem automática da SKYTICKETservice.
+      </div>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
+"""
+
+
+def _reserva_field(reserva, extras: dict | None, key: str, default: str = "—"):
+    extras = extras or {}
+    try:
+        if key in extras and extras.get(key) not in (None, ""):
+            return extras[key]
+        if isinstance(reserva, dict):
+            val = reserva.get(key)
+            return default if val in (None, "") else val
+        if hasattr(reserva, "keys") and key in reserva.keys() and reserva[key] is not None:
+            return reserva[key]
+        return default
+    except Exception:
+        return default
+
+
+def build_email_eticket_html(
+    reserva,
+    passageiros_txt: str = "",
+    pagamento: str = "",
+    extras: dict | None = None,
+) -> str:
+    """E-ticket leve e polido para EMAIL (tabelas + inline, sem logo grande)."""
+    from urllib.parse import quote
+
+    extras = extras or {}
+
+    def g(key, default="—"):
+        return _reserva_field(reserva, extras, key, default)
+
+    codigo = str(g("codigo", "—"))
+    obs = ""
+    try:
+        if isinstance(reserva, dict):
+            obs = reserva.get("observacoes") or ""
+        elif hasattr(reserva, "keys") and "observacoes" in reserva.keys():
+            obs = reserva["observacoes"] or ""
+    except Exception:
+        obs = ""
+
+    companhia = g("ticket_companhia", "") if g("ticket_companhia", "") != "—" else ""
+    if not companhia:
+        companhia = _parse_obs_field(obs, "Companhia") or "SKYTICKETservice"
+    flight_no = g("ticket_flight_no", "")
+    if not flight_no or flight_no == "—":
+        flight_no = _parse_obs_field(obs, "Voo") or ""
+    horario = g("ticket_horario", "")
+    if not horario or horario == "—":
+        horario = _parse_obs_field(obs, "Horário") or "—"
+    horario_chegada = g("ticket_horario_chegada", "—")
+    duracao = g("ticket_duracao", "")
+    if not duracao or duracao == "—":
+        duracao = _parse_obs_field(obs, "Duração") or "—"
+    classe = g("classe_nome", "")
+    if not classe or classe == "—":
+        classe = _parse_obs_field(obs, "Classe") or "—"
+    if not pagamento:
+        pagamento = _parse_obs_field(obs, "Pagamento") or "—"
+
+    o_cid = str(g("origem_cidade", "") or "")
+    o_pais = str(g("origem_pais", "") or "")
+    d_cid = str(g("destino_cidade", "") or "")
+    d_pais = str(g("destino_pais", "") or "")
+    origem = f"{o_cid}, {o_pais}".strip(", ") or "—"
+    destino = f"{d_cid}, {d_pais}".strip(", ") or "—"
+
+    total = _format_money(
+        g("total", 0) if g("total", 0) != "—" else 0, str(g("moeda", "USD") or "USD")
+    )
+    tipo = "Ida e volta" if g("tipo_viagem") == "ida_volta" else "Só ida"
+    data_viagem = str(g("data_viagem", "—") or "—")
+    data_regresso = str(g("data_regresso", "") or "")
+    nome = str(g("nome", "") or g("cliente_nome", "") or "")
+    status = str(g("status", "confirmada") or "confirmada")
+
+    pax_html = passageiros_txt.strip() if passageiros_txt else _html_escape(nome or "—")
+
+    wa_msg = (
+        f"Olá SKYTICKETservice, tenho uma dúvida sobre a reserva {codigo} "
+        f"({origem} → {destino})."
+    )
+    wa_href = f"https://wa.me/258849053340?text={quote(wa_msg)}"
+
+    meta_pills = []
+    if flight_no:
+        meta_pills.append(_html_escape(str(flight_no)))
+    if classe and classe != "—":
+        meta_pills.append(_html_escape(str(classe)))
+    meta_pills.append(_html_escape(tipo))
+    pills = " · ".join(meta_pills)
+
+    chegada_row = ""
+    if horario_chegada and horario_chegada != "—":
+        chegada_row = f"""
+        <tr>
+          <td style="padding:8px 0;color:#6b5a55;width:38%;font-size:13px">Chegada</td>
+          <td style="padding:8px 0;font-size:15px;font-weight:700;color:#5c0a2c">{_html_escape(horario_chegada)}</td>
+        </tr>"""
+
+    regresso_row = ""
+    if data_regresso:
+        regresso_row = f"""
+        <tr>
+          <td style="padding:8px 0;color:#6b5a55;width:38%;font-size:13px">Regresso</td>
+          <td style="padding:8px 0;font-size:14px;color:#1a1a1a">{_html_escape(data_regresso)}</td>
+        </tr>"""
+
+    inner = f"""
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">
+  <tr>
+    <td style="padding:22px 22px 8px 22px">
+      <div style="font-size:13px;color:#6b5a55;letter-spacing:0.08em;text-transform:uppercase">
+        Confirmação de reserva
+      </div>
+      <div style="font-size:22px;font-weight:700;color:#5c0a2c;margin-top:4px;font-family:Georgia,'Times New Roman',serif">
+        O seu e-ticket está pronto
+      </div>
+      <p style="margin:10px 0 0;font-size:14px;line-height:1.5;color:#333">
+        Olá <strong>{_html_escape(nome or "Cliente")}</strong>, a sua reserva foi confirmada.
+        Guarde este e-mail e apresente o código no check-in.
+      </p>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="padding:8px 22px 18px 22px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="border-collapse:collapse;background:#faf6f2;border:1px solid #e8d5a3">
+        <tr>
+          <td style="padding:16px 18px;text-align:center">
+            <div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#c9a227;font-weight:700">
+              Código de reserva
+            </div>
+            <div style="font-size:28px;font-weight:800;letter-spacing:0.12em;color:#5c0a2c;
+                        font-family:Consolas,'Courier New',monospace;margin-top:6px">
+              {_html_escape(codigo)}
+            </div>
+            <div style="font-size:12px;color:#6b5a55;margin-top:6px">
+              Estado: <strong style="color:#5c0a2c">{_html_escape(status)}</strong>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="padding:0 22px 18px 22px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="border-collapse:collapse;background:#5c0a2c">
+        <tr>
+          <td width="42%" style="padding:18px 14px;text-align:center;vertical-align:middle">
+            <div style="font-size:11px;color:#e8d5a3;letter-spacing:0.1em;text-transform:uppercase">Origem</div>
+            <div style="font-size:16px;font-weight:700;color:#ffffff;margin-top:6px;line-height:1.3">
+              {_html_escape(origem)}
+            </div>
+          </td>
+          <td width="16%" style="padding:10px 4px;text-align:center;vertical-align:middle;color:#c9a227;font-size:22px">
+            &#9992;
+          </td>
+          <td width="42%" style="padding:18px 14px;text-align:center;vertical-align:middle">
+            <div style="font-size:11px;color:#e8d5a3;letter-spacing:0.1em;text-transform:uppercase">Destino</div>
+            <div style="font-size:16px;font-weight:700;color:#ffffff;margin-top:6px;line-height:1.3">
+              {_html_escape(destino)}
+            </div>
+          </td>
+        </tr>
+      </table>
+      <div style="font-size:12px;color:#6b5a55;margin-top:8px;text-align:center">{pills}</div>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="padding:0 22px 8px 22px">
+      <div style="font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#c9a227;font-weight:700;margin-bottom:6px">
+        Detalhes do voo
+      </div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="border-collapse:collapse;font-family:Segoe UI,Helvetica Neue,Arial,sans-serif">
+        <tr>
+          <td style="padding:8px 0;color:#6b5a55;width:38%;font-size:13px;border-top:1px solid #eee4dc">Companhia</td>
+          <td style="padding:8px 0;font-size:14px;color:#1a1a1a;border-top:1px solid #eee4dc">{_html_escape(companhia)}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:#6b5a55;font-size:13px;border-top:1px solid #eee4dc">Data</td>
+          <td style="padding:8px 0;font-size:14px;color:#1a1a1a;border-top:1px solid #eee4dc">{_html_escape(data_viagem)}</td>
+        </tr>
+        {regresso_row}
+        <tr>
+          <td style="padding:8px 0;color:#6b5a55;font-size:13px;border-top:1px solid #eee4dc">Partida</td>
+          <td style="padding:8px 0;font-size:18px;font-weight:700;color:#5c0a2c;border-top:1px solid #eee4dc">{_html_escape(str(horario))}</td>
+        </tr>
+        {chegada_row}
+        <tr>
+          <td style="padding:8px 0;color:#6b5a55;font-size:13px;border-top:1px solid #eee4dc">Duração</td>
+          <td style="padding:8px 0;font-size:14px;color:#1a1a1a;border-top:1px solid #eee4dc">{_html_escape(str(duracao))}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:#6b5a55;font-size:13px;border-top:1px solid #eee4dc">Pagamento</td>
+          <td style="padding:8px 0;font-size:14px;color:#1a1a1a;border-top:1px solid #eee4dc">{_html_escape(str(pagamento))}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:#6b5a55;font-size:13px;border-top:1px solid #eee4dc">Total</td>
+          <td style="padding:8px 0;font-size:18px;font-weight:800;color:#5c0a2c;border-top:1px solid #eee4dc">{_html_escape(total)}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="padding:14px 22px 8px 22px">
+      <div style="font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#c9a227;font-weight:700;margin-bottom:8px">
+        Passageiros
+      </div>
+      <div style="font-size:13px;line-height:1.55;color:#1a1a1a;background:#faf6f2;padding:12px 14px;border:1px solid #eee4dc">
+        {pax_html}
+      </div>
+    </td>
+  </tr>
+
+  <tr>
+    <td style="padding:20px 22px 26px 22px" align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 auto">
+        <tr>
+          <td style="background:#c9a227;border-radius:4px">
+            <a href="{wa_href}"
+               style="display:inline-block;padding:14px 28px;font-family:Segoe UI,Arial,sans-serif;
+                      font-size:14px;font-weight:700;color:#5c0a2c;text-decoration:none;
+                      letter-spacing:0.03em">
+              Falar no WhatsApp
+            </a>
+          </td>
+        </tr>
+      </table>
+      <div style="font-size:12px;color:#6b5a55;margin-top:12px;line-height:1.45">
+        Dúvidas? Escreva-nos em {_html_escape(_AGENCY_MAIL)} ou WhatsApp {_html_escape(_AGENCY_WA)}.
+      </div>
+    </td>
+  </tr>
+</table>
+"""
+    html = _email_shell(
+        inner,
+        preview_text=f"Reserva {codigo} confirmada · {origem} → {destino} · {total}",
+    )
+    return _slim_html_for_email(html)
+
+
+
+# --- PDF e-ticket (reportlab) — inserted before _slim_html_for_email ---
+
+def _pdf_logo_path() -> Path | None:
+    for p in (
+        Path(__file__).resolve().parent / "static" / "img" / "logo-official.png",
+        Path(__file__).resolve().parent / "static" / "img" / "logo.jpg",
+        LOGO_FULL_PATH,
+        LOGO_PATH,
+    ):
+        if p.exists():
+            return p
+    return None
+
+
+def build_eticket_pdf(
+    reserva,
+    passageiros_txt: str = "",
+    pagamento: str = "",
+    extras: dict | None = None,
+) -> bytes:
+    """PDF boarding-pass com logo oficial (reportlab)."""
+    from io import BytesIO
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib.colors import Color, HexColor, white, black
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.utils import ImageReader
+    import re as _re
+
+    extras = extras or {}
+
+    def g(key, default="—"):
+        return _reserva_field(reserva, extras, key, default)
+
+    codigo = str(g("codigo", "—"))
+    obs = ""
+    try:
+        if isinstance(reserva, dict):
+            obs = reserva.get("observacoes") or ""
+        elif hasattr(reserva, "keys") and "observacoes" in reserva.keys():
+            obs = reserva["observacoes"] or ""
+    except Exception:
+        obs = ""
+
+    companhia = g("ticket_companhia", "") if g("ticket_companhia", "") != "—" else ""
+    if not companhia:
+        companhia = _parse_obs_field(obs, "Companhia") or "SKYTICKETservice"
+    flight_no = g("ticket_flight_no", "")
+    if not flight_no or flight_no == "—":
+        flight_no = _parse_obs_field(obs, "Voo") or "—"
+    horario = g("ticket_horario", "")
+    if not horario or horario == "—":
+        horario = _parse_obs_field(obs, "Horário") or "—"
+    horario_chegada = g("ticket_horario_chegada", "—")
+    duracao = g("ticket_duracao", "")
+    if not duracao or duracao == "—":
+        duracao = _parse_obs_field(obs, "Duração") or "—"
+    classe = g("classe_nome", "")
+    if not classe or classe == "—":
+        classe = _parse_obs_field(obs, "Classe") or "—"
+    if not pagamento:
+        pagamento = _parse_obs_field(obs, "Pagamento") or "—"
+
+    o_cid = str(g("origem_cidade", "") or "")
+    o_pais = str(g("origem_pais", "") or "")
+    d_cid = str(g("destino_cidade", "") or "")
+    d_pais = str(g("destino_pais", "") or "")
+    origem = f"{o_cid}, {o_pais}".strip(", ") or "—"
+    destino = f"{d_cid}, {d_pais}".strip(", ") or "—"
+    total = _format_money(
+        g("total", 0) if g("total", 0) != "—" else 0, str(g("moeda", "USD") or "USD")
+    )
+    tipo = "Ida e volta" if g("tipo_viagem") == "ida_volta" else "Só ida"
+    data_viagem = str(g("data_viagem", "—") or "—")
+    data_regresso = str(g("data_regresso", "") or "")
+    nome = str(g("nome", "") or g("cliente_nome", "") or "—")
+    status = str(g("status", "confirmada") or "confirmada")
+
+    pax_plain = _re.sub(r"<[^>]+>", " ", passageiros_txt or "")
+    pax_plain = _re.sub(r"\s+", " ", pax_plain).strip() or nome
+
+    bordo = HexColor("#5c0a2c")
+    gold = HexColor("#c9a227")
+    gold_lt = HexColor("#e8d5a3")
+    cream = HexColor("#faf6f2")
+    muted = HexColor("#6b5a55")
+
+    buf = BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    W, H = A4
+    margin = 18 * mm
+
+    # Background
+    c.setFillColor(HexColor("#f3eee9"))
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+
+    # Card
+    card_x, card_y = margin, margin
+    card_w, card_h = W - 2 * margin, H - 2 * margin
+    c.setFillColor(white)
+    c.setStrokeColor(HexColor("#e5d9d0"))
+    c.setLineWidth(1)
+    c.roundRect(card_x, card_y, card_w, card_h, 6, fill=1, stroke=1)
+
+    # Header bar
+    head_h = 32 * mm
+    c.setFillColor(bordo)
+    c.rect(card_x, card_y + card_h - head_h, card_w, head_h, fill=1, stroke=0)
+    # Gold line
+    c.setFillColor(gold)
+    c.rect(card_x, card_y + card_h - head_h - 2.2 * mm, card_w, 2.2 * mm, fill=1, stroke=0)
+
+    logo_p = _pdf_logo_path()
+    if logo_p:
+        try:
+            img = ImageReader(str(logo_p))
+            iw, ih = img.getSize()
+            max_w, max_h = 28 * mm, 18 * mm
+            scale = min(max_w / iw, max_h / ih)
+            lw, lh = iw * scale, ih * scale
+            c.drawImage(
+                img,
+                card_x + 8 * mm,
+                card_y + card_h - head_h + (head_h - lh) / 2,
+                width=lw,
+                height=lh,
+                mask="auto",
+                preserveAspectRatio=True,
+            )
+            text_x = card_x + 8 * mm + lw + 6 * mm
+        except Exception:
+            text_x = card_x + 10 * mm
+            logo_p = None
+    if not logo_p:
+        text_x = card_x + 10 * mm
+
+    c.setFillColor(white)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(text_x, card_y + card_h - 14 * mm, "SKYTICKETservice")
+    c.setFillColor(gold_lt)
+    c.setFont("Helvetica", 9)
+    c.drawString(text_x, card_y + card_h - 20 * mm, "E-TICKET  ·  BOARDING PASS")
+
+    y = card_y + card_h - head_h - 14 * mm
+
+    # Booking code box
+    c.setFillColor(cream)
+    c.setStrokeColor(gold_lt)
+    c.roundRect(card_x + 10 * mm, y - 18 * mm, card_w - 20 * mm, 22 * mm, 4, fill=1, stroke=1)
+    c.setFillColor(gold)
+    c.setFont("Helvetica-Bold", 8)
+    c.drawCentredString(card_x + card_w / 2, y - 2 * mm, "CÓDIGO DE RESERVA")
+    c.setFillColor(bordo)
+    c.setFont("Courier-Bold", 22)
+    c.drawCentredString(card_x + card_w / 2, y - 11 * mm, codigo)
+    c.setFillColor(muted)
+    c.setFont("Helvetica", 9)
+    c.drawCentredString(card_x + card_w / 2, y - 16 * mm, f"Estado: {status}  ·  {tipo}")
+    y -= 30 * mm
+
+    # Route bar
+    c.setFillColor(bordo)
+    c.roundRect(card_x + 10 * mm, y - 22 * mm, card_w - 20 * mm, 26 * mm, 4, fill=1, stroke=0)
+    c.setFillColor(gold_lt)
+    c.setFont("Helvetica", 8)
+    c.drawCentredString(card_x + 10 * mm + (card_w - 20 * mm) * 0.22, y - 2 * mm, "ORIGEM")
+    c.drawCentredString(card_x + 10 * mm + (card_w - 20 * mm) * 0.78, y - 2 * mm, "DESTINO")
+    c.setFillColor(white)
+    c.setFont("Helvetica-Bold", 11)
+    # wrap origin/dest if long
+    def _fit(txt, max_chars=28):
+        t = str(txt)
+        return t if len(t) <= max_chars else t[: max_chars - 1] + "…"
+
+    c.drawCentredString(card_x + 10 * mm + (card_w - 20 * mm) * 0.22, y - 10 * mm, _fit(origem))
+    c.drawCentredString(card_x + 10 * mm + (card_w - 20 * mm) * 0.78, y - 10 * mm, _fit(destino))
+    c.setFillColor(gold)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(card_x + card_w / 2, y - 10 * mm, "✈")
+    c.setFillColor(gold_lt)
+    c.setFont("Helvetica", 8)
+    c.drawCentredString(card_x + card_w / 2, y - 18 * mm, f"{flight_no}  ·  {classe}")
+    y -= 36 * mm
+
+    # Details
+    c.setFillColor(bordo)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(card_x + 12 * mm, y, "DETALHES DO VOO")
+    y -= 8 * mm
+    c.setStrokeColor(gold_lt)
+    c.setLineWidth(0.6)
+    c.line(card_x + 12 * mm, y + 4 * mm, card_x + card_w - 12 * mm, y + 4 * mm)
+
+    rows = [
+        ("Companhia", str(companhia)),
+        ("Voo", str(flight_no)),
+        ("Data", data_viagem),
+    ]
+    if data_regresso:
+        rows.append(("Regresso", data_regresso))
+    rows.extend(
+        [
+            ("Partida", str(horario)),
+            ("Chegada", str(horario_chegada)),
+            ("Duração", str(duracao)),
+            ("Classe", str(classe)),
+            ("Pagamento", str(pagamento)),
+            ("Total", total),
+        ]
+    )
+
+    for label, val in rows:
+        c.setFillColor(muted)
+        c.setFont("Helvetica", 9)
+        c.drawString(card_x + 12 * mm, y, label)
+        c.setFillColor(black if label != "Total" else bordo)
+        c.setFont("Helvetica-Bold" if label in ("Total", "Partida") else "Helvetica", 10 if label == "Total" else 9)
+        c.drawRightString(card_x + card_w - 12 * mm, y, str(val)[:48])
+        y -= 6.2 * mm
+
+    y -= 4 * mm
+    c.setFillColor(bordo)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(card_x + 12 * mm, y, "PASSAGEIROS")
+    y -= 6 * mm
+    c.setFillColor(cream)
+    c.setStrokeColor(HexColor("#eee4dc"))
+    box_h = 28 * mm
+    c.roundRect(card_x + 10 * mm, y - box_h + 4 * mm, card_w - 20 * mm, box_h, 3, fill=1, stroke=1)
+    c.setFillColor(black)
+    c.setFont("Helvetica", 9)
+    # wrap passenger text
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+
+    max_w = card_w - 28 * mm
+    words = pax_plain.split()
+    lines, cur = [], ""
+    for w in words:
+        trial = (cur + " " + w).strip()
+        if stringWidth(trial, "Helvetica", 9) <= max_w:
+            cur = trial
+        else:
+            if cur:
+                lines.append(cur)
+            cur = w
+    if cur:
+        lines.append(cur)
+    ty = y - 2 * mm
+    for line in lines[:8]:
+        c.drawString(card_x + 14 * mm, ty, line)
+        ty -= 4.5 * mm
+
+    # Footer
+    c.setFillColor(bordo)
+    foot_h = 18 * mm
+    c.rect(card_x, card_y, card_w, foot_h, fill=1, stroke=0)
+    c.setFillColor(gold)
+    c.rect(card_x, card_y + foot_h, card_w, 1.8 * mm, fill=1, stroke=0)
+    c.setFillColor(gold_lt)
+    c.setFont("Helvetica-Bold", 9)
+    c.drawCentredString(card_x + card_w / 2, card_y + 11 * mm, "SKYTICKETservice")
+    c.setFillColor(white)
+    c.setFont("Helvetica", 8)
+    c.drawCentredString(
+        card_x + card_w / 2,
+        card_y + 6 * mm,
+        f"{_AGENCY_MAIL}  ·  WhatsApp {_AGENCY_WA}",
+    )
+    c.setFillColor(gold_lt)
+    c.setFont("Helvetica", 7)
+    c.drawCentredString(
+        card_x + card_w / 2,
+        card_y + 2.5 * mm,
+        "Nampula · Maputo · Beira · Online · 24h",
+    )
+
+    c.setTitle(f"E-Ticket {codigo} — SKYTICKETservice")
+    c.setAuthor("SKYTICKETservice")
+    c.showPage()
+    c.save()
+    return buf.getvalue()
+
+
+def save_eticket_pdf(codigo: str, pdf_bytes: bytes) -> Path:
+    TICKETS_DIR.mkdir(parents=True, exist_ok=True)
+    path = TICKETS_DIR / f"{codigo}.pdf"
+    path.write_bytes(pdf_bytes)
+    return path
 
 
 def _slim_html_for_email(html: str) -> str:
@@ -1411,8 +2191,12 @@ def send_confirmation_email(
     codigo: str,
     html_ticket: str,
     nome: str = "",
+    reserva=None,
+    passageiros_txt: str = "",
+    pagamento: str = "",
+    extras: dict | None = None,
 ) -> tuple[bool, str]:
-    """Gera o bilhete localmente e envia por e-mail ao passageiro."""
+    """Guarda o e-ticket HTML completo e envia versão leve + PDF por e-mail."""
     path = save_eticket(codigo, html_ticket)
     cfg = load_smtp_config()
     ready, reason = smtp_is_ready(cfg)
@@ -1427,10 +2211,46 @@ def send_confirmation_email(
             f"Configure em Admin → E-mail / SMTP.",
         )
 
-    text = (
+    email_html = ""
+    if reserva is not None:
+        try:
+            email_html = build_email_eticket_html(
+                reserva,
+                passageiros_txt=passageiros_txt,
+                pagamento=pagamento,
+                extras=extras,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("build_email_eticket_html falhou: %s", exc)
+            email_html = ""
+    if not email_html:
+        email_html = _slim_html_for_email(html_ticket)
+
+    attachments: list[dict] = []
+    pdf_path = None
+    try:
+        src = reserva if reserva is not None else {"codigo": codigo, "nome": nome}
+        pdf_bytes = build_eticket_pdf(
+            src,
+            passageiros_txt=passageiros_txt,
+            pagamento=pagamento,
+            extras=extras,
+        )
+        pdf_path = save_eticket_pdf(codigo, pdf_bytes)
+        attachments.append(
+            {
+                "filename": f"SKYTICKET-{codigo}.pdf",
+                "content": pdf_bytes,
+                "mime_type": "application/pdf",
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("PDF e-ticket falhou: %s", exc)
+
+    text_body = (
         f"Olá {nome or ''},\n\n"
         f"A sua reserva {codigo} foi confirmada com sucesso na SKYTICKETservice.\n\n"
-        f"Encontra em baixo o bilhete electrónico (e-ticket) com todos os detalhes.\n"
+        f"Encontra em anexo o bilhete em PDF e, em baixo, o resumo da reserva.\n"
         f"Guarde este e-mail e apresente o código {codigo} no check-in.\n\n"
         f"Qualquer dúvida:\n"
         f"E-mail: skyticketservicee@gmail.com\n"
@@ -1443,12 +2263,14 @@ def send_confirmation_email(
     ok, msg = _send_raw(
         to_email=to_email,
         subject=f"SKYTICKETservice — Confirmação e e-ticket {codigo}",
-        text_body=text,
-        html_body=_slim_html_for_email(html_ticket),
+        text_body=text_body,
+        html_body=email_html,
         cfg=cfg,
+        attachments=attachments or None,
     )
     if ok:
-        return True, f"Confirmação e e-ticket enviados para {to_email.strip()}."
+        extra = f" PDF: {pdf_path.name}." if pdf_path else ""
+        return True, f"Confirmação e e-ticket enviados para {to_email.strip()}.{extra}"
     return False, f"{msg} Bilhete guardado em {path.name}."
 
 
@@ -1490,8 +2312,6 @@ def send_test_email(to_email: str) -> tuple[bool, str]:
 # Notificações de estado (visto / reserva) — sempre From mail_from da agência
 # ---------------------------------------------------------------------------
 
-_AGENCY_WA = "+258 84 905 3340"
-_AGENCY_MAIL = "skyticketservicee@gmail.com"
 
 _STATUS_VISTO_LABELS: dict[str, str] = {
     "pendente": "Pendente",
@@ -1508,10 +2328,6 @@ _STATUS_RESERVA_LABELS: dict[str, str] = {
 }
 
 
-def _html_escape(value: Any) -> str:
-    from html import escape
-
-    return escape(str(value if value is not None else ""), quote=True)
 
 
 def _row_get(row: Any, key: str, default: Any = "") -> Any:
@@ -1532,15 +2348,8 @@ def _row_get(row: Any, key: str, default: Any = "") -> Any:
 
 
 def _agency_email_footer_html() -> str:
-    return f"""
-    <hr style="border:none;border-top:1px solid #e2e8f0;margin:28px 0 16px">
-    <p style="color:#5c6b7a;font-size:.9rem;line-height:1.5;margin:0">
-      <strong>SKYTICKETservice</strong><br>
-      E-mail: <a href="mailto:{_AGENCY_MAIL}" style="color:#0b1f3a">{_AGENCY_MAIL}</a><br>
-      WhatsApp: <a href="https://wa.me/258849053340" style="color:#0b1f3a">{_AGENCY_WA}</a><br>
-      Nampula · Maputo · Beira · Online · 24h
-    </p>
-    """
+    """Compat: footer de marca (usa o mesmo bloco do envelope de e-mail)."""
+    return _email_brand_footer_html()
 
 
 def _agency_email_footer_text() -> str:
@@ -1554,14 +2363,22 @@ def _agency_email_footer_text() -> str:
 
 
 def _wrap_status_html(title: str, body_html: str) -> str:
-    return f"""
-    <div style="font-family:Segoe UI,Arial,sans-serif;max-width:560px;margin:0 auto;
-                padding:28px 24px;color:#0b1f3a;background:#ffffff">
-      <h2 style="margin:0 0 16px;color:#0b1f3a;font-size:1.35rem">{title}</h2>
-      {body_html}
-      {_agency_email_footer_html()}
-    </div>
-    """
+    inner = f"""
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">
+  <tr>
+    <td style="padding:22px 22px 8px 22px">
+      <div style="font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#c9a227;font-weight:700">
+        SKYTICKETservice
+      </div>
+      <h2 style="margin:6px 0 14px;color:#5c0a2c;font-size:20px;font-family:Georgia,'Times New Roman',serif">
+        {_html_escape(title)}
+      </h2>
+      <div style="font-size:14px;line-height:1.55;color:#1a1a1a">{body_html}</div>
+    </td>
+  </tr>
+</table>
+"""
+    return _email_shell(inner, preview_text=title)
 
 
 def send_status_email(
@@ -1569,6 +2386,7 @@ def send_status_email(
     subject: str,
     html_body: str,
     text_body: str,
+    attachments: list[dict] | None = None,
 ) -> tuple[bool, str]:
     """Wrapper fino sobre ``_send_raw`` com a configuração da agência (mail_from)."""
     cfg = load_smtp_config()
@@ -1578,6 +2396,7 @@ def send_status_email(
         text_body=text_body,
         html_body=html_body,
         cfg=cfg,
+        attachments=attachments,
     )
 
 
@@ -1731,7 +2550,7 @@ def send_reserva_status_email(
     if status == "confirmada":
         try:
             # Reconstruir e-ticket simples a partir da linha (sem passageiros detalhados)
-            ticket_html = build_eticket_html(
+            ticket_html = build_email_eticket_html(
                 row_dict if isinstance(row_dict, dict) else dict(row_dict),
                 passageiros_txt=_html_escape(nome),
                 pagamento="",
@@ -1811,4 +2630,22 @@ def send_reserva_status_email(
         f"Total: {total_fmt}\n"
         f"{_agency_email_footer_text()}"
     )
-    return send_status_email(to_email, subject, html, text)
+    attachments = None
+    if status == "confirmada":
+        try:
+            pdf_bytes = build_eticket_pdf(
+                row_dict if isinstance(row_dict, dict) else dict(row_dict),
+                passageiros_txt=_html_escape(nome),
+                extras={"nome": nome, "email": to_email, "status": status},
+            )
+            save_eticket_pdf(codigo, pdf_bytes)
+            attachments = [
+                {
+                    "filename": f"SKYTICKET-{codigo}.pdf",
+                    "content": pdf_bytes,
+                    "mime_type": "application/pdf",
+                }
+            ]
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("PDF status e-ticket falhou: %s", exc)
+    return send_status_email(to_email, subject, html, text, attachments=attachments)

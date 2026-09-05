@@ -51,6 +51,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "brevo_api_key": "",
     # SendGrid (https://app.sendgrid.com) — chave API
     "sendgrid_api_key": "",
+    # Gmail Apps Script relay (HTTPS) — envia como a conta Gmail da agência
+    "gmail_relay_url": "",
+    "gmail_relay_secret": "",
 }
 
 
@@ -74,6 +77,8 @@ def load_smtp_config() -> dict[str, Any]:
         "SMTP_ADMIN_EMAIL": "admin_email",
         "BREVO_API_KEY": "brevo_api_key",
         "SENDGRID_API_KEY": "sendgrid_api_key",
+        "GMAIL_RELAY_URL": "gmail_relay_url",
+        "GMAIL_RELAY_SECRET": "gmail_relay_secret",
         "EMAIL_PROVIDER": "provider",
     }
     for env_k, cfg_k in env_map.items():
@@ -147,6 +152,15 @@ def smtp_is_ready(cfg: dict[str, Any] | None = None) -> tuple[bool, str]:
         return False, "Envio de e-mail desactivado na configuração."
 
     provider = (cfg.get("provider") or "smtp").lower()
+    if provider == "gmail_relay":
+        if not (cfg.get("gmail_relay_url") or "").strip():
+            return False, "Modo Gmail Relay: falta o URL do Apps Script."
+        if not (cfg.get("gmail_relay_secret") or "").strip():
+            return False, "Modo Gmail Relay: falta o secret do Apps Script."
+        if not (cfg.get("mail_from") or cfg.get("user") or "").strip():
+            return False, "Modo Gmail Relay: indique o e-mail remetente (mail_from)."
+        return True, "Gmail Relay (Apps Script HTTPS) pronto a enviar."
+
     if provider == "sendgrid":
         if not (cfg.get("sendgrid_api_key") or "").strip():
             return (
@@ -994,6 +1008,57 @@ def _send_via_brevo(
         return False, f"Falha Brevo: {exc}"
 
 
+
+def _send_via_gmail_relay(
+    *,
+    to_email: str,
+    subject: str,
+    text_body: str,
+    html_body: str,
+    cfg: dict[str, Any],
+) -> tuple[bool, str]:
+    """Envia via Google Apps Script (GmailApp) — HTTPS, sem SMTP."""
+    url = (cfg.get("gmail_relay_url") or "").strip()
+    secret = (cfg.get("gmail_relay_secret") or "").strip()
+    if not url:
+        return False, "Falta gmail_relay_url."
+    if not secret:
+        return False, "Falta gmail_relay_secret."
+
+    from_name = (cfg.get("from_name") or "SKYTICKETservice").strip()
+    payload: dict[str, Any] = {
+        "secret": secret,
+        "to": to_email.strip(),
+        "subject": subject,
+        "text": text_body or " ",
+        "html": html_body or text_body or " ",
+        "fromName": from_name,
+    }
+    if cfg.get("bcc_admin"):
+        admin = (cfg.get("admin_email") or cfg.get("mail_from") or "").strip()
+        if admin and admin.lower() != to_email.strip().lower():
+            payload["bcc"] = admin
+
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=data,
+        method="POST",
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            logger.info("Gmail relay OK: %s", body[:200])
+        return True, f"E-mail enviado para {to_email.strip()} (via Gmail / Apps Script)."
+    except urllib.error.HTTPError as exc:
+        err_body = exc.read().decode("utf-8", errors="replace")
+        return False, f"Gmail relay HTTP {exc.code}: {err_body[:280]}"
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Gmail relay error")
+        return False, f"Falha Gmail relay: {exc}"
+
+
 def _send_via_sendgrid(
     *,
     to_email: str,
@@ -1199,6 +1264,15 @@ def _send_raw(
 
     provider = (cfg.get("provider") or "smtp").lower()
 
+    if provider == "gmail_relay":
+        return _send_via_gmail_relay(
+            to_email=to_email,
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+            cfg=cfg,
+        )
+
     # Preferência: SendGrid quando seleccionado
     if provider == "sendgrid":
         return _send_via_sendgrid(
@@ -1240,6 +1314,23 @@ def _send_raw(
                 "Se a conta Brevo ainda não estiver activada, defina provider=sendgrid "
                 "no Admin → E-mail."
             )
+        if (
+            not ok
+            and _brevo_activation_failure(msg)
+            and (cfg.get("gmail_relay_url") or "").strip()
+            and (cfg.get("gmail_relay_secret") or "").strip()
+        ):
+            logger.info("Brevo falhou — a tentar Gmail Relay automaticamente")
+            ok3, msg3 = _send_via_gmail_relay(
+                to_email=to_email,
+                subject=subject,
+                text_body=text_body,
+                html_body=html_body,
+                cfg=cfg,
+            )
+            if ok3:
+                return True, msg3 + " (Brevo falhou; usado Gmail Relay.)"
+
         if not ok and _brevo_activation_failure(msg):
             return False, (
                 f"{msg} "

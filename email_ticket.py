@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import logging
 import os
 import smtplib
@@ -1049,8 +1050,20 @@ def _send_via_gmail_relay(
     try:
         with urllib.request.urlopen(req, timeout=60) as resp:
             body = resp.read().decode("utf-8", errors="replace")
-            logger.info("Gmail relay OK: %s", body[:200])
-        return True, f"E-mail enviado para {to_email.strip()} (via Gmail / Apps Script)."
+            logger.info("Gmail relay response: %s", body[:300])
+        try:
+            parsed = json.loads(body) if body.strip() else {}
+        except json.JSONDecodeError:
+            parsed = {}
+        if isinstance(parsed, dict) and parsed.get("ok") is False:
+            err = str(parsed.get("error") or body)[:280]
+            return False, f"Gmail relay recusou: {err}"
+        if isinstance(parsed, dict) and parsed.get("ok") is True:
+            return True, f"E-mail enviado para {to_email.strip()} (via Gmail / Apps Script)."
+        # Resposta inesperada mas HTTP 200
+        if "ok" not in (parsed or {}):
+            return True, f"E-mail enviado para {to_email.strip()} (via Gmail / Apps Script)."
+        return False, f"Gmail relay resposta inesperada: {body[:280]}"
     except urllib.error.HTTPError as exc:
         err_body = exc.read().decode("utf-8", errors="replace")
         return False, f"Gmail relay HTTP {exc.code}: {err_body[:280]}"
@@ -1375,6 +1388,24 @@ def _send_raw(
     return ok, msg
 
 
+
+def _slim_html_for_email(html: str) -> str:
+    """Remove imagens data-URI enormes (logo) para caber no limite do GmailApp."""
+    if not html:
+        return html
+    # Remove <img ... src="data:..."> blocks
+    slim = re.sub(
+        r'<img\b[^>]*src=["\']data:image/[^"\']+["\'][^>]*/?>',
+        '<div style="font-weight:800;color:#5c0a2c;letter-spacing:.08em">SKYTICKETservice</div>',
+        html,
+        flags=re.I,
+    )
+    # Safety truncate if still huge
+    if len(slim) > 90_000:
+        slim = slim[:90_000] + "<p>... (conteúdo truncado para envio por e-mail)</p>"
+    return slim
+
+
 def send_confirmation_email(
     to_email: str,
     codigo: str,
@@ -1413,7 +1444,7 @@ def send_confirmation_email(
         to_email=to_email,
         subject=f"SKYTICKETservice — Confirmação e e-ticket {codigo}",
         text_body=text,
-        html_body=html_ticket,
+        html_body=_slim_html_for_email(html_ticket),
         cfg=cfg,
     )
     if ok:

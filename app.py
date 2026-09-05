@@ -35,7 +35,9 @@ from phone_codes import all_phone_countries
 from email_ticket import (
     load_smtp_config,
     save_smtp_config,
+    send_reserva_status_email,
     send_test_email,
+    send_visa_notification_email,
     smtp_is_ready,
 )
 from flight_search import (
@@ -661,6 +663,36 @@ def vistos_solicitar():
             )
             db.commit()
             db.close()
+            # E-mail de confirmação de recepção (From agência)
+            try:
+                ok_mail, mail_msg = send_visa_notification_email(
+                    {
+                        "codigo": codigo,
+                        "nome": nome,
+                        "email": email,
+                        "pais_destino": pais_destino,
+                        "nacionalidade": nacionalidade,
+                        "status": "pendente",
+                    },
+                    "pendente",
+                )
+                if ok_mail:
+                    flash(
+                        f"Pedido registado. Confirmação enviada para {email}.",
+                        "success",
+                    )
+                else:
+                    flash(
+                        f"Pedido registado. E-mail não enviado: {mail_msg} "
+                        f"Configure em Admin → E-mail (Gmail App Password para "
+                        f"skyticketservicee@gmail.com).",
+                        "warning",
+                    )
+            except Exception as exc:  # noqa: BLE001
+                flash(
+                    f"Pedido registado. Falha ao enviar e-mail: {exc}",
+                    "warning",
+                )
             session["visto_ok_codigo"] = codigo
             return redirect(url_for("vistos_sucesso"))
 
@@ -743,8 +775,25 @@ def admin_visto_status(vid: int):
     db = get_db()
     db.execute("UPDATE pedidos_visto SET status = ? WHERE id = ?", (novo, vid))
     db.commit()
+    row = db.execute(
+        "SELECT * FROM pedidos_visto WHERE id = ?", (vid,)
+    ).fetchone()
     db.close()
     flash("Estado do pedido de visto actualizado.", "success")
+    if row:
+        try:
+            ok_mail, mail_msg = send_visa_notification_email(row, novo)
+            if ok_mail:
+                flash(f"E-mail enviado ao cliente: {mail_msg}", "success")
+            else:
+                flash(
+                    f"E-mail ao cliente não enviado: {mail_msg} "
+                    f"Admin → E-mail precisa de Gmail App Password para "
+                    f"skyticketservicee@gmail.com se a password estiver vazia.",
+                    "warning",
+                )
+        except Exception as exc:  # noqa: BLE001
+            flash(f"Falha ao enviar e-mail ao cliente: {exc}", "warning")
     return redirect(url_for("admin_vistos", status=request.args.get("status") or None))
 
 
@@ -1096,7 +1145,8 @@ def admin_reserva_status(rid: int):
         return redirect(url_for("admin_reservas"))
     db = get_db()
     row = db.execute(
-        """SELECT r.*, c.nome AS cliente_nome, c.telefone AS cliente_telefone
+        """SELECT r.*, c.nome AS cliente_nome, c.email AS email,
+                  c.telefone AS cliente_telefone
            FROM reservas r JOIN clientes c ON c.id = r.cliente_id
            WHERE r.id = ?""",
         (rid,),
@@ -1115,6 +1165,21 @@ def admin_reserva_status(rid: int):
         )
         # Notifica o admin (registo / eco). Cliente: link se tiver telefone.
         notify_if_enabled("status", texto)
+
+        if novo in ("confirmada", "cancelada"):
+            try:
+                ok_mail, mail_msg = send_reserva_status_email(row, novo)
+                if ok_mail:
+                    flash(f"E-mail enviado ao cliente: {mail_msg}", "success")
+                else:
+                    flash(
+                        f"E-mail ao cliente não enviado: {mail_msg} "
+                        f"Admin → E-mail precisa de Gmail App Password para "
+                        f"skyticketservicee@gmail.com se a password estiver vazia.",
+                        "warning",
+                    )
+            except Exception as exc:  # noqa: BLE001
+                flash(f"Falha ao enviar e-mail ao cliente: {exc}", "warning")
 
     flash(f"Reserva actualizada para «{novo}».", "success")
     return redirect(url_for("admin_reservas", status=request.args.get("status", "")))

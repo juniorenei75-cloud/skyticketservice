@@ -1208,3 +1208,330 @@ def send_test_email(to_email: str) -> tuple[bool, str]:
         html_body=html,
         cfg=cfg,
     )
+
+# ---------------------------------------------------------------------------
+# Notificações de estado (visto / reserva) — sempre From mail_from da agência
+# ---------------------------------------------------------------------------
+
+_AGENCY_WA = "+258 84 905 3340"
+_AGENCY_MAIL = "skyticketservicee@gmail.com"
+
+_STATUS_VISTO_LABELS: dict[str, str] = {
+    "pendente": "Pendente",
+    "em_analise": "Em análise",
+    "contactado": "Contactado",
+    "concluido": "Concluído / emitido",
+    "cancelado": "Cancelado",
+}
+
+_STATUS_RESERVA_LABELS: dict[str, str] = {
+    "pendente": "Pendente",
+    "confirmada": "Confirmada",
+    "cancelada": "Cancelada",
+}
+
+
+def _html_escape(value: Any) -> str:
+    from html import escape
+
+    return escape(str(value if value is not None else ""), quote=True)
+
+
+def _row_get(row: Any, key: str, default: Any = "") -> Any:
+    """Lê chave de dict, sqlite3.Row ou objecto similar."""
+    if row is None:
+        return default
+    try:
+        if isinstance(row, dict):
+            val = row.get(key, default)
+            return default if val is None else val
+        if hasattr(row, "keys") and key in row.keys():
+            val = row[key]
+            return default if val is None else val
+        val = getattr(row, key, default)
+        return default if val is None else val
+    except Exception:
+        return default
+
+
+def _agency_email_footer_html() -> str:
+    return f"""
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:28px 0 16px">
+    <p style="color:#5c6b7a;font-size:.9rem;line-height:1.5;margin:0">
+      <strong>SKYTICKETservice</strong><br>
+      E-mail: <a href="mailto:{_AGENCY_MAIL}" style="color:#0b1f3a">{_AGENCY_MAIL}</a><br>
+      WhatsApp: <a href="https://wa.me/258849053340" style="color:#0b1f3a">{_AGENCY_WA}</a><br>
+      Nampula · Maputo · Beira · Online · 24h
+    </p>
+    """
+
+
+def _agency_email_footer_text() -> str:
+    return (
+        f"\n---\n"
+        f"SKYTICKETservice\n"
+        f"E-mail: {_AGENCY_MAIL}\n"
+        f"WhatsApp: {_AGENCY_WA}\n"
+        f"Nampula · Maputo · Beira · Online · 24h\n"
+    )
+
+
+def _wrap_status_html(title: str, body_html: str) -> str:
+    return f"""
+    <div style="font-family:Segoe UI,Arial,sans-serif;max-width:560px;margin:0 auto;
+                padding:28px 24px;color:#0b1f3a;background:#ffffff">
+      <h2 style="margin:0 0 16px;color:#0b1f3a;font-size:1.35rem">{title}</h2>
+      {body_html}
+      {_agency_email_footer_html()}
+    </div>
+    """
+
+
+def send_status_email(
+    to_email: str,
+    subject: str,
+    html_body: str,
+    text_body: str,
+) -> tuple[bool, str]:
+    """Wrapper fino sobre ``_send_raw`` com a configuração da agência (mail_from)."""
+    cfg = load_smtp_config()
+    return _send_raw(
+        to_email=to_email,
+        subject=subject,
+        text_body=text_body,
+        html_body=html_body,
+        cfg=cfg,
+    )
+
+
+def send_visa_notification_email(
+    pedido_dict: Any,
+    novo_status: str,
+) -> tuple[bool, str]:
+    """E-mail em português sobre o novo estado do pedido de visto.
+
+    Remetente: sempre ``mail_from`` / from_name SKYTICKETservice.
+    """
+    to_email = str(_row_get(pedido_dict, "email", "")).strip()
+    nome = str(_row_get(pedido_dict, "nome", "")).strip() or "Cliente"
+    codigo = str(_row_get(pedido_dict, "codigo", "")).strip() or "—"
+    destino = str(_row_get(pedido_dict, "pais_destino", "")).strip() or "—"
+    nacionalidade = str(_row_get(pedido_dict, "nacionalidade", "")).strip() or "—"
+    status = (novo_status or str(_row_get(pedido_dict, "status", ""))).strip()
+    label = _STATUS_VISTO_LABELS.get(status, status.replace("_", " ").title())
+
+    if status == "concluido":
+        subject = f"Visto emitido / concluído — {codigo}"
+        lead = (
+            f"Temos o prazer de informar que o seu pedido de visto "
+            f"<strong>{_html_escape(codigo)}</strong> foi "
+            f"<strong>concluído / emitido</strong>."
+        )
+        lead_txt = (
+            f"Temos o prazer de informar que o seu pedido de visto {codigo} "
+            f"foi concluído / emitido."
+        )
+    elif status == "cancelado":
+        subject = f"Pedido de visto cancelado — {codigo}"
+        lead = (
+            f"O seu pedido de visto <strong>{_html_escape(codigo)}</strong> "
+            f"foi <strong>cancelado</strong>."
+        )
+        lead_txt = f"O seu pedido de visto {codigo} foi cancelado."
+    elif status == "em_analise":
+        subject = f"Pedido de visto em análise — {codigo}"
+        lead = (
+            f"O seu pedido de visto <strong>{_html_escape(codigo)}</strong> "
+            f"está agora <strong>em análise</strong> pela nossa equipa."
+        )
+        lead_txt = (
+            f"O seu pedido de visto {codigo} está agora em análise pela nossa equipa."
+        )
+    elif status == "contactado":
+        subject = f"Pedido de visto — contacto da agência — {codigo}"
+        lead = (
+            f"Actualizámos o estado do pedido <strong>{_html_escape(codigo)}</strong> "
+            f"para <strong>contactado</strong>. Em breve (ou já) entraremos em "
+            f"contacto consigo pelos dados fornecidos."
+        )
+        lead_txt = (
+            f"Actualizámos o estado do pedido {codigo} para contactado. "
+            f"Em breve (ou já) entraremos em contacto consigo."
+        )
+    elif status == "pendente":
+        subject = f"Pedido de visto recebido — {codigo}"
+        lead = (
+            f"Recebemos o seu pedido de visto "
+            f"<strong>{_html_escape(codigo)}</strong>. "
+            f"A nossa equipa irá analisá-lo e contactá-lo em breve."
+        )
+        lead_txt = (
+            f"Recebemos o seu pedido de visto {codigo}. "
+            f"A nossa equipa irá analisá-lo e contactá-lo em breve."
+        )
+    else:
+        subject = f"Actualização do pedido de visto — {codigo}"
+        lead = (
+            f"O estado do seu pedido de visto "
+            f"<strong>{_html_escape(codigo)}</strong> foi actualizado para "
+            f"<strong>{_html_escape(label)}</strong>."
+        )
+        lead_txt = (
+            f"O estado do seu pedido de visto {codigo} foi actualizado para {label}."
+        )
+
+    body_html = f"""
+      <p>Olá {_html_escape(nome)},</p>
+      <p>{lead}</p>
+      <table style="width:100%;border-collapse:collapse;margin:18px 0;
+                    font-size:.95rem">
+        <tr>
+          <td style="padding:8px 0;color:#5c6b7a;width:42%">Código</td>
+          <td style="padding:8px 0"><strong>{_html_escape(codigo)}</strong></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:#5c6b7a">Estado</td>
+          <td style="padding:8px 0"><strong>{_html_escape(label)}</strong></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:#5c6b7a">Destino</td>
+          <td style="padding:8px 0">{_html_escape(destino)}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:#5c6b7a">Nacionalidade</td>
+          <td style="padding:8px 0">{_html_escape(nacionalidade)}</td>
+        </tr>
+      </table>
+      <p style="color:#5c6b7a;font-size:.92rem">
+        Se tiver dúvidas, responda a este e-mail ou contacte-nos por WhatsApp.
+      </p>
+    """
+    html = _wrap_status_html("SKYTICKETservice — Pedido de visto", body_html)
+    text = (
+        f"Olá {nome},\n\n"
+        f"{lead_txt}\n\n"
+        f"Código: {codigo}\n"
+        f"Estado: {label}\n"
+        f"Destino: {destino}\n"
+        f"Nacionalidade: {nacionalidade}\n"
+        f"{_agency_email_footer_text()}"
+    )
+    return send_status_email(to_email, subject, html, text)
+
+
+def send_reserva_status_email(
+    row_dict: Any,
+    novo_status: str,
+) -> tuple[bool, str]:
+    """Notifica o cliente quando a reserva é confirmada ou cancelada.
+
+    Tenta reconstruir o e-ticket HTML se houver dados suficientes (opcional);
+    caso contrário envia apenas a mensagem de estado.
+    """
+    to_email = str(
+        _row_get(row_dict, "email", "")
+        or _row_get(row_dict, "cliente_email", "")
+    ).strip()
+    nome = str(
+        _row_get(row_dict, "cliente_nome", "")
+        or _row_get(row_dict, "nome", "")
+    ).strip() or "Cliente"
+    codigo = str(_row_get(row_dict, "codigo", "")).strip() or "—"
+    status = (novo_status or str(_row_get(row_dict, "status", ""))).strip()
+    label = _STATUS_RESERVA_LABELS.get(status, status)
+    total = _row_get(row_dict, "total", 0)
+    moeda = str(_row_get(row_dict, "moeda", "USD") or "USD")
+    total_fmt = _format_money(total, moeda)
+
+    o_cid = str(_row_get(row_dict, "origem_cidade", "") or "")
+    o_pais = str(_row_get(row_dict, "origem_pais", "") or "")
+    d_cid = str(_row_get(row_dict, "destino_cidade", "") or "")
+    d_pais = str(_row_get(row_dict, "destino_pais", "") or "")
+    rota = f"{o_cid or o_pais} → {d_cid or d_pais}".strip(" →") or "—"
+    data_viagem = str(_row_get(row_dict, "data_viagem", "") or "—")
+
+    ticket_html = ""
+    if status == "confirmada":
+        try:
+            # Reconstruir e-ticket simples a partir da linha (sem passageiros detalhados)
+            ticket_html = build_eticket_html(
+                row_dict if isinstance(row_dict, dict) else dict(row_dict),
+                passageiros_txt=_html_escape(nome),
+                pagamento="",
+                extras={"nome": nome, "email": to_email, "status": status},
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Não foi possível reconstruir e-ticket: %s", exc)
+            ticket_html = ""
+
+    if status == "confirmada":
+        subject = f"SKYTICKETservice — Bilhete / reserva confirmada {codigo}"
+        lead = (
+            f"A sua reserva <strong>{_html_escape(codigo)}</strong> foi "
+            f"<strong>confirmada</strong>. O bilhete electrónico (e-ticket) "
+            f"segue em baixo quando disponível."
+        )
+        lead_txt = (
+            f"A sua reserva {codigo} foi confirmada. "
+            f"Guarde este e-mail e apresente o código {codigo} no check-in."
+        )
+    elif status == "cancelada":
+        subject = f"SKYTICKETservice — Reserva cancelada {codigo}"
+        lead = (
+            f"Informamos que a reserva <strong>{_html_escape(codigo)}</strong> "
+            f"foi <strong>cancelada</strong>."
+        )
+        lead_txt = f"Informamos que a reserva {codigo} foi cancelada."
+    else:
+        subject = f"SKYTICKETservice — Actualização da reserva {codigo}"
+        lead = (
+            f"O estado da reserva <strong>{_html_escape(codigo)}</strong> "
+            f"foi actualizado para <strong>{_html_escape(label)}</strong>."
+        )
+        lead_txt = (
+            f"O estado da reserva {codigo} foi actualizado para {label}."
+        )
+
+    body_html = f"""
+      <p>Olá {_html_escape(nome)},</p>
+      <p>{lead}</p>
+      <table style="width:100%;border-collapse:collapse;margin:18px 0;
+                    font-size:.95rem">
+        <tr>
+          <td style="padding:8px 0;color:#5c6b7a;width:42%">Código</td>
+          <td style="padding:8px 0"><strong>{_html_escape(codigo)}</strong></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:#5c6b7a">Estado</td>
+          <td style="padding:8px 0"><strong>{_html_escape(label)}</strong></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:#5c6b7a">Rota</td>
+          <td style="padding:8px 0">{_html_escape(rota)}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:#5c6b7a">Data de viagem</td>
+          <td style="padding:8px 0">{_html_escape(data_viagem)}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:#5c6b7a">Total</td>
+          <td style="padding:8px 0">{_html_escape(total_fmt)}</td>
+        </tr>
+      </table>
+    """
+    status_html = _wrap_status_html("SKYTICKETservice — Reserva", body_html)
+    html = status_html
+    if ticket_html and status == "confirmada":
+        html = status_html + "\n" + ticket_html
+
+    text = (
+        f"Olá {nome},\n\n"
+        f"{lead_txt}\n\n"
+        f"Código: {codigo}\n"
+        f"Estado: {label}\n"
+        f"Rota: {rota}\n"
+        f"Data de viagem: {data_viagem}\n"
+        f"Total: {total_fmt}\n"
+        f"{_agency_email_footer_text()}"
+    )
+    return send_status_email(to_email, subject, html, text)

@@ -100,6 +100,20 @@ python app.py
 
 Configuração também em `smtp_config.json` (não partilhe este ficheiro com a password).
 
+### E-mails automáticos ao cliente (From agência)
+
+O remetente é sempre `mail_from` / **SKYTICKETservice** (`skyticketservicee@gmail.com` por omissão):
+
+| Evento | E-mail |
+|--------|--------|
+| Novo pedido de visto | «Pedido de visto recebido» |
+| Admin altera estado do visto | Notificação do novo estado (incl. concluído / cancelado) |
+| Admin confirma ou cancela reserva | Confirmação / cancelamento (e-ticket se possível) |
+| Booking flow (pagamento) | Confirmação + e-ticket (já existente) |
+
+Se `smtp_config.json` tiver a **password vazia**, o envio falha sem crash — o admin vê um aviso (flash).  
+Configure em **Admin → E-mail** uma [Gmail App Password](https://myaccount.google.com/apppasswords) para `skyticketservicee@gmail.com` (conta com 2FA).
+
 ---
 
 ## Funcionalidades

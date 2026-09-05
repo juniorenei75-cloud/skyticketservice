@@ -90,14 +90,14 @@
           <div class="country-picker"
                id="origem_pais"
                data-name="origem_pais"
-               data-value="{{ booking.origem_pais or 'Moçambique' }}"
+               data-value="{{ booking.origem_pais or '' }}"
                data-required="1"
                data-placeholder="Clique ou digite — vê a lista de países"></div>
         </div>
         <div class="form-group">
           <label for="origem_cidade">Cidade de origem</label>
           <input id="origem_cidade" name="origem_cidade"
-                 value="{{ booking.origem_cidade or 'Maputo' }}"
+                 value="{{ booking.origem_cidade or '' }}"
                  placeholder="Ex: Maputo, Nampula, Beira…">
         </div>
         <div class="form-group">

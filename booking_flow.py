@@ -139,8 +139,8 @@ def _pagamentos(lang: str | None = None):
 
 def _empty_booking() -> dict:
     return {
-        "origem_pais": default_country_name("pt", "MZ"),
-        "origem_cidade": "Maputo",
+        "origem_pais": "",
+        "origem_cidade": "",
         "destino_pais": "",
         "destino_cidade": "",
         "tipo_viagem": "ida_volta",  # ida | ida_volta — datas ida e volta na UI
@@ -959,14 +959,11 @@ def register_booking_routes(app, gerar_codigo):
                 "nome": "",
                 "nascimento": "",
                 "local_nascimento": "",
-                "nacionalidade": booking.get("origem_pais")
-                or default_country_name(_lang(), "MZ"),
-                "residencia": booking.get("origem_pais")
-                or default_country_name(_lang(), "MZ"),
+                "nacionalidade": booking.get("origem_pais") or "",
+                "residencia": booking.get("origem_pais") or "",
                 "tipo_documento": "PASSAPORTE",
                 "documento": "",
-                "pais_documento": booking.get("origem_pais")
-                or default_country_name(_lang(), "MZ"),
+                "pais_documento": booking.get("origem_pais") or "",
                 "doc_emissao": "",
                 "doc_validade": "",
                 "telefone": "",
@@ -1041,25 +1038,11 @@ def register_booking_routes(app, gerar_codigo):
                 "nome": nome,
                 "nascimento": nascimento,
                 "local_nascimento": local_nascimento,
-                "nacionalidade": nacionalidade
-                or (
-                    booking.get("origem_pais")
-                    or default_country_name(lang, "MZ")
-                ),
-                "residencia": residencia
-                or nacionalidade
-                or (
-                    booking.get("origem_pais")
-                    or default_country_name(lang, "MZ")
-                ),
+                "nacionalidade": nacionalidade or booking.get("origem_pais") or "",
+                "residencia": residencia or nacionalidade or booking.get("origem_pais") or "",
                 "tipo_documento": "PASSAPORTE",
                 "documento": documento,
-                "pais_documento": pais_documento
-                or nacionalidade
-                or (
-                    booking.get("origem_pais")
-                    or default_country_name(lang, "MZ")
-                ),
+                "pais_documento": pais_documento or nacionalidade or booking.get("origem_pais") or "",
                 "doc_emissao": doc_emissao,
                 "doc_validade": doc_validade,
                 "telefone": telefone_keep,

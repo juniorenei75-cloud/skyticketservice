@@ -125,7 +125,7 @@
             <label>{{ _('nationality') }}</label>
             <div class="country-picker"
                  data-name="nacionalidade_{{ i }}"
-                 data-value="{{ p.nacionalidade or booking.origem_pais or 'Moçambique' }}"
+                 data-value="{{ p.nacionalidade or '' }}"
                  data-required="1"
                  data-placeholder="{{ _('nationality') }}"></div>
             {% if ferr.nacionalidade %}<span class="field-error">{{ ferr.nacionalidade }}</span>{% endif %}
@@ -134,7 +134,7 @@
             <label>{{ _('pax_residence') }}</label>
             <div class="country-picker"
                  data-name="residencia_{{ i }}"
-                 data-value="{{ p.residencia or p.nacionalidade or booking.origem_pais or 'Moçambique' }}"
+                 data-value="{{ p.residencia or '' }}"
                  data-required="1"
                  data-placeholder="{{ _('pax_residence') }}"></div>
             {% if ferr.residencia %}<span class="field-error">{{ ferr.residencia }}</span>{% endif %}
@@ -162,7 +162,7 @@
             <label>{{ _('pax_passport_country') }}</label>
             <div class="country-picker"
                  data-name="pais_documento_{{ i }}"
-                 data-value="{{ p.pais_documento or p.nacionalidade or booking.origem_pais or 'Moçambique' }}"
+                 data-value="{{ p.pais_documento or '' }}"
                  data-required="1"
                  data-placeholder="{{ _('pax_passport_country') }}"></div>
             {% if ferr.pais_documento %}<span class="field-error">{{ ferr.pais_documento }}</span>{% endif %}

@@ -39,7 +39,7 @@
           <label>Nacionalidade *</label>
           <div class="country-picker"
                data-name="nacionalidade_{{ loop.index0 }}"
-               data-value="{{ p.nacionalidade or booking.origem_pais or 'Moçambique' }}"
+               data-value="{{ p.nacionalidade or '' }}"
                data-required="1"
                data-placeholder="Nacionalidade (lista de países)…"></div>
         </div>

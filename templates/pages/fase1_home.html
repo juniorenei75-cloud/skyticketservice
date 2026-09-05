@@ -13,7 +13,7 @@
         <div class="form-group">
           <label>{{ _('country_origin') }}</label>
           <div class="country-picker" data-name="origem_pais"
-               data-value="{{ booking.origem_pais or default_origem_pais }}"
+               data-value="{{ booking.origem_pais or '' }}"
                data-required="1"
                data-placeholder="{{ _('js_country_placeholder') }}"></div>
         </div>
@@ -22,7 +22,7 @@
           <div class="city-picker"
                data-name="origem_cidade"
                data-country-input="origem_pais"
-               data-value="{{ booking.origem_cidade or 'Maputo' }}"
+               data-value="{{ booking.origem_cidade or '' }}"
                data-required="1"
                data-placeholder="{{ _('city_ph_origin') }}"></div>
         </div>

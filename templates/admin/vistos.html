@@ -1,0 +1,57 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Pedidos de visto{% endblock %}
+{% block content %}
+<div class="admin-top">
+  <h1>Pedidos de visto</h1>
+  <div class="actions-row">
+    <a class="btn btn-sm {% if not status %}btn-primary{% else %}btn-ghost{% endif %}" href="{{ url_for('admin_vistos') }}">Todos</a>
+    {% for s in status_list %}
+    <a class="btn btn-sm {% if status == s %}btn-primary{% else %}btn-ghost{% endif %}" href="{{ url_for('admin_vistos', status=s) }}">{{ s }}</a>
+    {% endfor %}
+  </div>
+</div>
+<div class="table-wrap">
+  <table class="data">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Requerente</th>
+        <th>Destino / nacionalidade</th>
+        <th>Viagem</th>
+        <th>Estado</th>
+        <th>Acções</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pedidos %}
+      <tr>
+        <td><strong>{{ p.codigo }}</strong><br><span class="card-meta" style="font-size:.78rem">{{ p.criado_em }}</span></td>
+        <td>{{ p.nome }}<br><span class="card-meta" style="font-size:.8rem">{{ p.email }} · {{ p.telefone }}</span>
+          {% if p.passaporte %}<br><span class="card-meta" style="font-size:.78rem">Passaporte: {{ p.passaporte }}</span>{% endif %}
+          {% if p.notas %}<br><span class="card-meta" style="font-size:.78rem">{{ p.notas }}</span>{% endif %}
+        </td>
+        <td>🌍 {{ p.pais_destino }}<br><span class="card-meta" style="font-size:.78rem">Nac.: {{ p.nacionalidade }}</span>
+          <br><span class="badge badge-gold" style="font-size:.7rem">{{ propositos.get(p.proposito, p.proposito) }}</span>
+        </td>
+        <td>{{ p.num_requerentes }} pax
+          {% if p.data_viagem_inicio %}<br><span class="card-meta" style="font-size:.78rem">{{ p.data_viagem_inicio }}{% if p.data_viagem_fim %} → {{ p.data_viagem_fim }}{% endif %}</span>{% endif %}
+        </td>
+        <td><span class="badge badge-warning">{{ p.status }}</span></td>
+        <td>
+          <form method="post" action="{{ url_for('admin_visto_status', vid=p.id) }}" class="inline-form" style="display:flex;gap:.35rem;flex-wrap:wrap">
+            <select name="status" style="max-width:9rem">
+              {% for s in status_list %}
+              <option value="{{ s }}" {% if p.status == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn btn-sm btn-primary" type="submit">Actualizar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center;color:var(--muted)">Sem pedidos de visto.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

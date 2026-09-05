@@ -112,6 +112,25 @@ def init_db():
             lida INTEGER NOT NULL DEFAULT 0,
             criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         );
+        CREATE TABLE IF NOT EXISTS pedidos_visto (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo TEXT UNIQUE NOT NULL,
+            pais_destino TEXT NOT NULL,
+            nacionalidade TEXT NOT NULL,
+            proposito TEXT NOT NULL,
+            data_viagem_inicio TEXT,
+            data_viagem_fim TEXT,
+            num_requerentes INTEGER NOT NULL DEFAULT 1,
+            nome TEXT NOT NULL,
+            email TEXT NOT NULL,
+            telefone TEXT NOT NULL,
+            passaporte TEXT,
+            notas TEXT,
+            status TEXT NOT NULL DEFAULT 'pendente'
+                CHECK (status IN ('pendente', 'em_analise', 'contactado', 'concluido', 'cancelado')),
+            criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
+
         """
     )
 

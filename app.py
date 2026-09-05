@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import secrets
 import string
+from urllib.parse import quote
 from datetime import datetime
 from functools import wraps
 
@@ -269,6 +270,8 @@ def sitemap_xml():
         ("/hoteis", "0.7", "weekly"),
         ("/sobre", "0.8", "monthly"),
         ("/contacto", "0.8", "monthly"),
+        ("/vistos", "0.9", "weekly"),
+        ("/vistos/solicitar", "0.8", "weekly"),
         ("/reserva", "0.9", "weekly"),
     ]
     urls = []
@@ -470,6 +473,139 @@ def contacto():
 @app.route("/sobre")
 def sobre():
     return render_template("sobre.html")
+
+
+# ---------------------------------------------------------------------------
+# Vistos (secção independente — NÃO misturar com reserva de voos)
+# ---------------------------------------------------------------------------
+
+PROPOSITOS_VISTO = (
+    ("turismo", "Turismo"),
+    ("negocios", "Negócios"),
+    ("estudos", "Estudos"),
+    ("trabalho", "Trabalho"),
+    ("transito", "Trânsito"),
+    ("outro", "Outro"),
+)
+
+STATUS_VISTO = (
+    "pendente",
+    "em_analise",
+    "contactado",
+    "concluido",
+    "cancelado",
+)
+
+
+@app.route("/vistos")
+def vistos():
+    return render_template("vistos.html")
+
+
+@app.route("/vistos/solicitar", methods=["GET", "POST"])
+def vistos_solicitar():
+    if request.method == "POST":
+        pais_destino = request.form.get("pais_destino", "").strip()
+        nacionalidade = request.form.get("nacionalidade", "").strip()
+        proposito = request.form.get("proposito", "").strip()
+        data_inicio = request.form.get("data_viagem_inicio", "").strip()
+        data_fim = request.form.get("data_viagem_fim", "").strip()
+        nome = request.form.get("nome", "").strip()
+        email = request.form.get("email", "").strip()
+        telefone = request.form.get("telefone", "").strip()
+        passaporte = request.form.get("passaporte", "").strip()
+        notas = request.form.get("notas", "").strip()
+        consent = request.form.get("consentimento")
+        try:
+            num = int(request.form.get("num_requerentes") or "1")
+        except ValueError:
+            num = 1
+        num = max(1, min(num, 20))
+
+        if not pais_destino or not nacionalidade or not proposito or not nome or not email or not telefone:
+            flash("Preencha todos os campos obrigatórios.", "error")
+        elif not consent:
+            flash("É necessário aceitar o consentimento para continuar.", "error")
+        elif proposito not in dict(PROPOSITOS_VISTO):
+            flash("Propósito de viagem inválido.", "error")
+        else:
+            codigo = gerar_codigo("VISA")
+            db = get_db()
+            db.execute(
+                """INSERT INTO pedidos_visto
+                   (codigo, pais_destino, nacionalidade, proposito,
+                    data_viagem_inicio, data_viagem_fim, num_requerentes,
+                    nome, email, telefone, passaporte, notas, status)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    codigo, pais_destino, nacionalidade, proposito,
+                    data_inicio or None, data_fim or None, num,
+                    nome, email, telefone, passaporte or None, notas or None,
+                    "pendente",
+                ),
+            )
+            db.commit()
+            db.close()
+            session["visto_ok_codigo"] = codigo
+            return redirect(url_for("vistos_sucesso"))
+
+    return render_template(
+        "vistos_solicitar.html",
+        propositos=PROPOSITOS_VISTO,
+    )
+
+
+@app.route("/vistos/sucesso")
+def vistos_sucesso():
+    codigo = session.pop("visto_ok_codigo", None)
+    if not codigo:
+        return redirect(url_for("vistos"))
+    wa = (
+        "https://wa.me/258849053340"
+        f"?text={quote('Olá SKYTICKETservice, pedi visto ' + codigo)}"
+    )
+    return render_template("vistos_sucesso.html", codigo=codigo, wa_link=wa)
+
+
+@app.route("/admin/vistos")
+@login_required
+def admin_vistos():
+    status = request.args.get("status") or ""
+    db = get_db()
+    if status and status in STATUS_VISTO:
+        rows = db.execute(
+            "SELECT * FROM pedidos_visto WHERE status = ? ORDER BY id DESC",
+            (status,),
+        ).fetchall()
+    else:
+        rows = db.execute(
+            "SELECT * FROM pedidos_visto ORDER BY id DESC"
+        ).fetchall()
+        status = ""
+    db.close()
+    return render_template(
+        "admin/vistos.html",
+        pedidos=rows,
+        status=status,
+        status_list=STATUS_VISTO,
+        propositos=dict(PROPOSITOS_VISTO),
+    )
+
+
+@app.route("/admin/vistos/<int:vid>/status", methods=["POST"])
+@login_required
+def admin_visto_status(vid: int):
+    novo = request.form.get("status", "").strip()
+    if novo not in STATUS_VISTO:
+        flash("Estado inválido.", "error")
+        return redirect(url_for("admin_vistos"))
+    db = get_db()
+    db.execute("UPDATE pedidos_visto SET status = ? WHERE id = ?", (novo, vid))
+    db.commit()
+    db.close()
+    flash("Estado do pedido de visto actualizado.", "success")
+    return redirect(url_for("admin_vistos", status=request.args.get("status") or None))
+
 
 
 # ---------------------------------------------------------------------------

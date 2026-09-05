@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Solicitar visto · {{ agencia }}{% endblock %}
+{% block head %}
+<style>
+.visa-form-wrap{max-width:720px;margin:0 auto}
+.visa-form-wrap .form-card{border-top:4px solid #b8965a}
+.visa-steps{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem}
+.visa-steps span{background:#f9f0f4;color:#5c0a2c;border:1px solid #e8e0e4;padding:.35rem .7rem;border-radius:999px;font-size:.8rem;font-weight:600}
+.visa-check{display:flex;gap:.6rem;align-items:flex-start;margin:1rem 0}
+.visa-check input{margin-top:.25rem}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="container">
+    <span class="eyebrow">Vistos · pedido independente</span>
+    <h1>Solicitar visto</h1>
+    <p>Preencha os dados. Receberá um código de referência (VISA-XXXXXXXX).</p>
+  </div>
+</div>
+<section class="section">
+  <div class="container visa-form-wrap">
+    <form method="post" class="form-card" style="max-width:100%">
+      <div class="visa-steps">
+        <span>1 · Destino</span><span>2 · Viagem</span><span>3 · Contacto</span>
+      </div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>País de destino *</label>
+          <div class="country-picker" data-name="pais_destino" data-value="" data-required="1"
+               data-placeholder="Seleccione o país de destino…"></div>
+        </div>
+        <div class="form-group full">
+          <label>Nacionalidade / país do passaporte *</label>
+          <div class="country-picker" data-name="nacionalidade" data-value="" data-required="1"
+               data-placeholder="Seleccione a nacionalidade…"></div>
+        </div>
+        <div class="form-group">
+          <label for="proposito">Propósito da viagem *</label>
+          <select id="proposito" name="proposito" required>
+            <option value="">Seleccione…</option>
+            {% for val, label in propositos %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="num_requerentes">N.º de requerentes *</label>
+          <input id="num_requerentes" name="num_requerentes" type="number" min="1" max="20" value="1" required>
+        </div>
+        <div class="form-group">
+          <label for="data_viagem_inicio">Data prevista de ida</label>
+          <input id="data_viagem_inicio" name="data_viagem_inicio" type="date">
+        </div>
+        <div class="form-group">
+          <label for="data_viagem_fim">Data prevista de regresso</label>
+          <input id="data_viagem_fim" name="data_viagem_fim" type="date">
+        </div>
+        <div class="form-group">
+          <label for="nome">Nome completo *</label>
+          <input id="nome" name="nome" required autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label for="email">E-mail *</label>
+          <input id="email" type="email" name="email" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="telefone">Telefone / WhatsApp *</label>
+          <input id="telefone" name="telefone" required autocomplete="tel" placeholder="+258 …">
+        </div>
+        <div class="form-group">
+          <label for="passaporte">N.º do passaporte (opcional)</label>
+          <input id="passaporte" name="passaporte" autocomplete="off">
+        </div>
+        <div class="form-group full">
+          <label for="notas">Notas / observações</label>
+          <textarea id="notas" name="notas" rows="3" placeholder="Detalhes úteis para o pedido…"></textarea>
+        </div>
+      </div>
+      <label class="visa-check">
+        <input type="checkbox" name="consentimento" value="1" required>
+        <span>Autorizo a SKYTICKETservice a contactar-me sobre este pedido de visto e a tratar os dados indicados. *</span>
+      </label>
+      <button class="btn btn-primary" type="submit">Enviar pedido de visto</button>
+      <a class="btn btn-ghost" href="{{ url_for('vistos') }}">Voltar</a>
+    </form>
+  </div>
+</section>
+{% endblock %}

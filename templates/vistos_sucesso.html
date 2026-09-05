@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Pedido enviado · {{ agencia }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container" style="max-width:560px;text-align:center">
+    <div class="form-card" style="border-top:4px solid #b8965a">
+      <span class="badge badge-gold">Pedido registado</span>
+      <h1 style="color:#5c0a2c;margin:.75rem 0">Obrigado!</h1>
+      <p>O seu pedido de visto foi recebido. Guarde o código de referência:</p>
+      <p style="font-size:1.6rem;font-weight:800;letter-spacing:.06em;color:#5c0a2c;margin:1rem 0">{{ codigo }}</p>
+      <p class="card-meta">A equipa SKYTICKETservice irá contactá-lo em breve.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:.75rem;justify-content:center;margin-top:1.5rem">
+        <a class="btn btn-primary" href="{{ wa_link }}" target="_blank" rel="noopener">Continuar no WhatsApp</a>
+        <a class="btn btn-ghost" href="{{ url_for('vistos') }}">Voltar a Vistos</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

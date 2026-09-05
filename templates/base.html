@@ -87,8 +87,8 @@
         <li><a href="{{ url_for('sobre') }}" class="{% if request.endpoint == 'sobre' %}active{% endif %}">{{ _('nav_experience') }}</a></li>
         <li><a href="{{ url_for('pacotes') }}" class="{% if request.endpoint and 'pacote' in (request.endpoint or '') %}active{% endif %}">{{ _('nav_club') }}</a></li>
         <li><a href="{{ url_for('destinos') }}" class="{% if request.endpoint == 'destinos' %}active{% endif %}">{{ _('nav_destinations') }}</a></li>
+        <li><a href="{{ url_for('vistos') }}" class="{% if request.endpoint and 'visto' in (request.endpoint or '') %}active{% endif %}">Visas</a></li>
         <li><a href="{{ url_for('voos') }}" class="{% if request.endpoint == 'voos' %}active{% endif %}">{{ _('nav_deals') }}</a></li>
-        <li><a href="{{ url_for('vistos') }}" class="{% if request.endpoint and 'visto' in (request.endpoint or '') %}active{% endif %}">Vistos</a></li>
         <li><a href="{{ url_for('contacto') }}" class="{% if request.endpoint == 'contacto' %}active{% endif %}">{{ _('nav_help') }}</a></li>
         <li class="qr-nav-cta"><a href="{{ url_for('reserva_pesquisa') }}">{{ _('nav_book_flight') }}</a></li>
       </ul>
@@ -125,7 +125,7 @@
           <a href="{{ url_for('pacotes') }}">{{ _('nav_packages') }}</a>
           <a href="{{ url_for('hoteis') }}">{{ _('nav_hotels') }}</a>
           <a href="{{ url_for('voos') }}">{{ _('nav_flight_deals') }}</a>
-          <a href="{{ url_for('vistos') }}">Vistos</a>
+          <a href="{{ url_for('vistos') }}">Visas</a>
           <a href="{{ url_for('destinos') }}">{{ _('nav_destinations') }}</a>
         </div>
         <div>

@@ -1,47 +1,151 @@
 {% extends "base.html" %}
-{% block title %}Vistos · {{ agencia }}{% endblock %}
+{% block title %}Visas · {{ agencia }}{% endblock %}
+{% block meta_description %}Assistência de vistos SKYTICKETservice — turismo, negócios, estudos, trabalho e trânsito para qualquer país que exija visto.{% endblock %}
 {% block head %}
 <style>
-.visa-hero{background:linear-gradient(135deg,#5c0a2c 0%,#3a061c 55%,#5c0a2c 100%);color:#fff;padding:3.5rem 0 3rem;position:relative;overflow:hidden}
-.visa-hero::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 20%,rgba(184,150,90,.35),transparent 45%);pointer-events:none}
-.visa-hero .container{position:relative;z-index:1}
-.visa-hero .eyebrow{color:#d4bc8a;letter-spacing:.14em;text-transform:uppercase;font-size:.75rem;font-weight:700}
-.visa-hero h1{font-family:var(--font-display);font-size:clamp(2rem,4vw,3rem);margin:.5rem 0;color:#fff}
-.visa-hero p{max-width:38rem;opacity:.92;font-size:1.05rem}
-.visa-stamp{display:inline-block;border:2px dashed #b8965a;color:#d4bc8a;padding:.35rem .75rem;border-radius:4px;font-weight:700;letter-spacing:.08em;font-size:.8rem;margin-bottom:1rem}
-.visa-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.25rem;margin-top:2rem}
-.visa-card{background:#fff;border:1px solid #e8e0e4;border-top:3px solid #b8965a;border-radius:12px;padding:1.35rem;box-shadow:0 8px 24px rgba(92,10,39,.06)}
-.visa-card h3{margin:0 0 .4rem;color:#5c0a2c;font-family:var(--font-display);font-size:1.35rem}
-.visa-card p{margin:0;color:#6b5c63;font-size:.95rem}
-.visa-cta{margin-top:2rem;display:flex;flex-wrap:wrap;gap:.75rem}
+.visa-hero{background:linear-gradient(145deg,#5c0a2c 0%,#2a0414 50%,#5c0a2c 100%);color:#fff;padding:4.5rem 0 4rem;position:relative;overflow:hidden}
+.visa-hero::before{content:"";position:absolute;width:420px;height:420px;right:-80px;top:-100px;border:2px solid rgba(184,150,90,.25);border-radius:50%}
+.visa-hero::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 80% 30%,rgba(184,150,90,.28),transparent 42%);pointer-events:none}
+.visa-hero .container{position:relative;z-index:1;display:grid;grid-template-columns:1.2fr .8fr;gap:2rem;align-items:center}
+@media(max-width:900px){.visa-hero .container{grid-template-columns:1fr}}
+.visa-hero .eyebrow{color:#d4bc8a;letter-spacing:.16em;text-transform:uppercase;font-size:.72rem;font-weight:700}
+.visa-hero h1{font-family:var(--font-display,Georgia,serif);font-size:clamp(2.2rem,5vw,3.4rem);margin:.6rem 0 1rem;color:#fff;line-height:1.15}
+.visa-hero .lead{max-width:36rem;opacity:.95;font-size:1.12rem;line-height:1.6}
+.visa-stamp{display:inline-block;border:2px dashed #b8965a;color:#d4bc8a;padding:.4rem .85rem;border-radius:4px;font-weight:700;letter-spacing:.1em;font-size:.78rem;margin-bottom:1rem}
+.visa-panel{background:rgba(255,255,255,.06);border:1px solid rgba(184,150,90,.35);border-radius:16px;padding:1.5rem}
+.visa-panel h3{margin:0 0 .75rem;color:#d4bc8a;font-size:1rem;letter-spacing:.06em;text-transform:uppercase}
+.visa-panel ul{margin:0;padding-left:1.1rem;line-height:1.7}
+.visa-cta{margin-top:1.75rem;display:flex;flex-wrap:wrap;gap:.75rem}
+.visa-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:-2.5rem;position:relative;z-index:2}
+@media(max-width:700px){.visa-stats{grid-template-columns:1fr;margin-top:1.5rem}}
+.visa-stat{background:#fff;border-radius:14px;padding:1.25rem 1.4rem;box-shadow:0 12px 40px rgba(92,10,39,.12);border-top:3px solid #b8965a;text-align:center}
+.visa-stat strong{display:block;font-size:1.6rem;color:#5c0a2c;font-family:var(--font-display,Georgia,serif)}
+.visa-stat span{color:#6b5c63;font-size:.9rem}
+.visa-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.25rem}
+.visa-card{background:#fff;border:1px solid #e8e0e4;border-radius:14px;padding:1.5rem;box-shadow:0 8px 28px rgba(92,10,39,.06)}
+.visa-card .ico{width:42px;height:42px;border-radius:10px;background:#f9f0f4;color:#5c0a2c;display:flex;align-items:center;justify-content:center;font-weight:800;margin-bottom:.85rem}
+.visa-card h3{margin:0 0 .45rem;color:#5c0a2c;font-family:var(--font-display,Georgia,serif);font-size:1.35rem}
+.visa-card p{margin:0;color:#6b5c63;font-size:.95rem;line-height:1.55}
+.visa-types{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.85rem}
+.visa-type{background:linear-gradient(180deg,#fff,#faf6f8);border:1px solid #eadfe4;border-radius:12px;padding:1.1rem;text-align:center}
+.visa-type strong{display:block;color:#5c0a2c;margin-bottom:.25rem}
+.visa-type span{font-size:.85rem;color:#6b5c63}
+.visa-split{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+@media(max-width:800px){.visa-split{grid-template-columns:1fr}}
+.visa-list{margin:0;padding:0;list-style:none}
+.visa-list li{padding:.7rem 0;border-bottom:1px solid #eee;color:#444;display:flex;gap:.65rem}
+.visa-list li::before{content:"✓";color:#b8965a;font-weight:800}
+.visa-band{background:#f9f0f4;border-radius:18px;padding:2rem;margin-top:1rem;display:flex;flex-wrap:wrap;gap:1.25rem;align-items:center;justify-content:space-between}
+.visa-band h2{margin:0;color:#5c0a2c;font-family:var(--font-display,Georgia,serif);font-size:1.8rem}
+.visa-band p{margin:.35rem 0 0;color:#6b5c63;max-width:32rem}
 </style>
 {% endblock %}
 {% block content %}
 <section class="visa-hero">
   <div class="container">
-    <span class="visa-stamp">SERVIÇO DE VISTOS</span>
-    <span class="eyebrow">SKYTICKETservice · Assistência premium</span>
-    <h1>Vistos para qualquer destino</h1>
-    <p>Precisa de visto para viajar? Tratamos do pedido para qualquer país que exija visto — turismo, negócios, estudos, trabalho ou trânsito. Secção independente da reserva de bilhetes.</p>
-    <div class="visa-cta">
-      <a class="btn btn-gold" href="{{ url_for('vistos_solicitar') }}">Solicitar visto</a>
-      <a class="btn btn-outline-light" href="{{ contacto.whatsapp_link }}" target="_blank" rel="noopener">WhatsApp {{ contacto.telefone }}</a>
+    <div>
+      <span class="visa-stamp">VISAS · SERVIÇO GLOBAL</span>
+      <div class="eyebrow">SKYTICKETservice · Secção dedicada</div>
+      <h1>Vistos para qualquer parte do mundo</h1>
+      <p class="lead">Esta área é exclusiva para pedidos de visto — independente da compra de bilhetes ou pacotes. Tratamos destinos que exigem visto: turismo, negócios, estudos, trabalho e trânsito.</p>
+      <div class="visa-cta">
+        <a class="btn btn-gold" href="{{ url_for('vistos_solicitar') }}">Solicitar visto agora</a>
+        <a class="btn btn-outline-light" href="{{ contacto.whatsapp_link }}" target="_blank" rel="noopener">WhatsApp {{ contacto.telefone }}</a>
+      </div>
+    </div>
+    <aside class="visa-panel">
+      <h3>O que está incluído</h3>
+      <ul>
+        <li>Análise do destino e tipo de visto</li>
+        <li>Lista de documentos necessários</li>
+        <li>Orientação no preenchimento</li>
+        <li>Acompanhamento até à decisão</li>
+        <li>Contacto directo WhatsApp 24h</li>
+      </ul>
+    </aside>
+  </div>
+</section>
+<section class="section" style="padding-top:0">
+  <div class="container">
+    <div class="visa-stats">
+      <div class="visa-stat"><strong>190+</strong><span>países / destinos possíveis</span></div>
+      <div class="visa-stat"><strong>5</strong><span>tipos de visto principais</span></div>
+      <div class="visa-stat"><strong>24h</strong><span>resposta da equipa</span></div>
     </div>
   </div>
 </section>
 <section class="section">
   <div class="container">
     <div class="section-head">
+      <h2>Tipos de visto que tratamos</h2>
+      <p>Escolha o propósito no formulário — a equipa indica o caminho certo para o seu caso.</p>
+    </div>
+    <div class="visa-types">
+      <div class="visa-type"><strong>Turismo</strong><span>Lazer e família</span></div>
+      <div class="visa-type"><strong>Negócios</strong><span>Reuniões e feiras</span></div>
+      <div class="visa-type"><strong>Estudos</strong><span>Universidade e cursos</span></div>
+      <div class="visa-type"><strong>Trabalho</strong><span>Contrato e missões</span></div>
+      <div class="visa-type"><strong>Trânsito</strong><span>Escala / conexão</span></div>
+      <div class="visa-type"><strong>Outro</strong><span>Casos especiais</span></div>
+    </div>
+  </div>
+</section>
+<section class="section" style="background:#faf7f8">
+  <div class="container">
+    <div class="section-head">
       <h2>Como funciona</h2>
-      <p>Processo simples, acompanhamento pela nossa equipa.</p>
+      <p>Fluxo próprio — não passa pela reserva de voos.</p>
     </div>
     <div class="visa-grid">
-      <div class="visa-card"><h3>1. Pedido</h3><p>Indique destino, nacionalidade, datas e contacto no formulário dedicado.</p></div>
-      <div class="visa-card"><h3>2. Análise</h3><p>A equipa SKYTICKETservice analisa o caso e contacta-o com os próximos passos.</p></div>
-      <div class="visa-card"><h3>3. Acompanhamento</h3><p>Orientações, documentos e estado do pedido até à conclusão.</p></div>
+      <div class="visa-card"><div class="ico">1</div><h3>Pedido online</h3><p>Preenche o formulário Visas com destino, nacionalidade, datas e contacto.</p></div>
+      <div class="visa-card"><div class="ico">2</div><h3>Código VISA-</h3><p>Recebe uma referência única (VISA-XXXXXXXX) e confirmação imediata.</p></div>
+      <div class="visa-card"><div class="ico">3</div><h3>Análise SKYTICKET</h3><p>A equipa analisa o caso e contacta-o com requisitos e próximos passos.</p></div>
+      <div class="visa-card"><div class="ico">4</div><h3>Acompanhamento</h3><p>Documentos, estado do pedido e suporte até à conclusão.</p></div>
     </div>
-    <div class="visa-cta">
-      <a class="btn btn-primary" href="{{ url_for('vistos_solicitar') }}">Começar pedido de visto</a>
+  </div>
+</section>
+<section class="section">
+  <div class="container visa-split">
+    <div>
+      <div class="section-head" style="text-align:left;margin-bottom:1rem">
+        <h2>Porquê pela SKYTICKETservice?</h2>
+        <p>Agência de viagens com atendimento dedicado a vistos, sem misturar com bilhetes.</p>
+      </div>
+      <ul class="visa-list">
+        <li>Secção Visas no menu principal — serviço autónomo</li>
+        <li>Qualquer país que exija visto</li>
+        <li>Orientação em português, clara e directa</li>
+        <li>WhatsApp e e-mail da agência</li>
+        <li>Histórico do pedido no painel admin</li>
+      </ul>
+    </div>
+    <div>
+      <div class="section-head" style="text-align:left;margin-bottom:1rem">
+        <h2>Documentos habituais</h2>
+        <p>A lista exacta depende do destino — estes são os mais comuns:</p>
+      </div>
+      <ul class="visa-list">
+        <li>Passaporte válido</li>
+        <li>Foto tipo passe</li>
+        <li>Comprovativo de viagem / reserva</li>
+        <li>Comprovativo financeiro</li>
+        <li>Carta de convite ou matrícula (se aplicável)</li>
+        <li>Seguro de viagem (quando exigido)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<section class="section">
+  <div class="container">
+    <div class="visa-band">
+      <div>
+        <h2>Pronto para pedir o seu visto?</h2>
+        <p>Abra o formulário dedicado. Em minutos fica com a referência do pedido e a equipa entra em contacto.</p>
+      </div>
+      <div class="visa-cta" style="margin:0">
+        <a class="btn btn-primary" href="{{ url_for('vistos_solicitar') }}">Ir para o formulário Visas</a>
+        <a class="btn btn-ghost" href="{{ contacto.whatsapp_link }}" target="_blank" rel="noopener">Falar no WhatsApp</a>
+      </div>
     </div>
   </div>
 </section>

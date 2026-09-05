@@ -1,19 +1,21 @@
-/* Páginas de reserva — alinhadas ao tema airline */
+/* Páginas de reserva — alinhadas ao tema airline premium */
 .page-body {
   margin: 0;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  font-family: var(--font, "Open Sans", "Segoe UI", system-ui, sans-serif);
-  color: var(--text, #1a1a1a);
-  background: var(--bg, #f7f5f2);
+  font-family: var(--font, "Inter", "Segoe UI", system-ui, sans-serif);
+  color: var(--text, #1c1216);
+  background: var(--bg, #f7f5f3);
 }
+
 .page-top {
-  padding: 0.85rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(11, 31, 58, 0.55);
-  backdrop-filter: blur(8px);
+  padding: 0.9rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(58, 6, 28, 0.72);
+  backdrop-filter: blur(10px);
 }
+
 .page-top-inner {
   width: min(960px, 92%);
   margin: 0 auto;
@@ -22,6 +24,7 @@
   align-items: center;
   gap: 1rem;
 }
+
 .page-brand {
   display: flex;
   align-items: center;
@@ -30,6 +33,7 @@
   font-weight: 800;
   text-decoration: none;
 }
+
 .page-brand .brand-mark {
   width: 44px;
   height: 44px;
@@ -41,12 +45,14 @@
   place-items: center;
   flex-shrink: 0;
 }
+
 .page-brand .brand-mark img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
 }
+
 .page-top-right {
   display: flex;
   align-items: center;
@@ -54,11 +60,13 @@
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+
 .page-step-label {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.92);
   font-weight: 700;
   font-size: 0.9rem;
 }
+
 .lang-mini {
   display: flex;
   gap: 0.25rem;
@@ -66,6 +74,7 @@
   padding: 0.2rem;
   border-radius: 999px;
 }
+
 .lang-mini-link {
   color: rgba(255, 255, 255, 0.75);
   text-decoration: none !important;
@@ -74,45 +83,53 @@
   padding: 0.3rem 0.5rem;
   border-radius: 999px;
 }
+
 .lang-mini-link:hover {
   color: #fff;
   background: rgba(255, 255, 255, 0.12);
 }
+
 .lang-mini-link.is-active {
-  background: #f5a623;
+  background: var(--gold, #b8965a);
   color: #1a1200;
 }
+
 .page-main {
   flex: 1;
   width: min(960px, 92%);
   margin: 0 auto;
   padding: 2rem 0 3rem;
 }
+
 .page-panel {
   background: #fff;
-  border-radius: 4px;
-  padding: 1.75rem 1.5rem;
-  box-shadow: 0 12px 40px rgba(92, 10, 39, 0.08);
-  border: 1px solid var(--border, #e5e0dc);
+  border-radius: var(--radius, 10px);
+  padding: 1.85rem 1.6rem;
+  box-shadow: 0 14px 40px rgba(92, 10, 39, 0.08);
+  border: 1px solid var(--border, #e8e0e4);
 }
+
 .page-panel h1 {
   margin: 0 0 0.5rem;
-  font-size: 1.55rem;
-  font-family: var(--font-display, "Montserrat", sans-serif);
-  color: var(--navy, #5c0a27);
+  font-size: 1.65rem;
+  font-family: var(--font-display, "Cormorant Garamond", serif);
+  color: var(--navy, #5c0a2c);
 }
+
 .page-panel .lead {
   margin: 0 0 1.25rem;
-  color: #5c6b7a;
+  color: #6b5c63;
 }
+
 .page-actions {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
   margin-top: 1.5rem;
   padding-top: 1.15rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #eee5ea;
 }
+
 .page-foot {
   display: flex;
   justify-content: space-between;
@@ -121,13 +138,14 @@
   padding: 1rem 4%;
   font-size: 0.82rem;
   color: rgba(255, 255, 255, 0.75);
-  background: rgba(11, 31, 58, 0.4);
+  background: rgba(58, 6, 28, 0.55);
 }
 
-/* Fundos por fase — tons bordo / creme (tema airline) */
+/* Fundos por fase — tons bordo / creme */
 .page-fase0 {
-  background: #f7f5f2;
+  background: #f7f5f3;
 }
+
 .page-fase1,
 .page-fase2,
 .page-fase3,
@@ -135,8 +153,9 @@
 .page-fase5,
 .page-fase6,
 .page-sucesso {
-  background: linear-gradient(180deg, #f7f5f2 0%, #efe8e4 100%);
+  background: linear-gradient(180deg, #f7f5f3 0%, #efe6ea 100%);
 }
+
 .page-fase1 .page-panel h1,
 .page-fase2 .page-panel h1,
 .page-fase3 .page-panel h1,
@@ -144,29 +163,29 @@
 .page-fase5 .page-panel h1,
 .page-fase6 .page-panel h1,
 .page-sucesso .page-panel h1 {
-  color: #5c0a27;
+  color: #5c0a2c;
 }
 
 .summary-chip {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  background: #faf7f8;
+  border: 1px solid #eee5ea;
+  border-radius: var(--radius-sm, 6px);
   padding: 0.9rem 1rem;
   margin-bottom: 1.25rem;
   font-size: 0.92rem;
-  color: #334155;
+  color: #3a3034;
 }
 
-/* —— Telemóvel (Samsung S20 FE e similares) —— */
+/* —— Telemóvel —— */
 @media (max-width: 720px) {
   .page-panel {
     width: min(100%, 100%);
     margin: 0.65rem auto 1.25rem;
-    padding: 1rem 0.9rem 1.25rem;
-    border-radius: 0;
+    padding: 1.05rem 0.95rem 1.3rem;
+    border-radius: 8px;
   }
   .page-panel h1 {
-    font-size: 1.28rem;
+    font-size: 1.35rem;
     line-height: 1.25;
   }
   .page-panel .lead {
@@ -183,7 +202,6 @@
     text-align: center;
     font-size: 1rem;
   }
-  /* Evita zoom automático no Android ao focar inputs (<16px) */
   .page-body input,
   .page-body select,
   .page-body textarea,
@@ -215,7 +233,6 @@
   }
 }
 
-/* Safe area (notch / barra de gestos do S20 FE) */
 @supports (padding: max(0px)) {
   .page-body {
     padding-left: env(safe-area-inset-left);

@@ -56,13 +56,12 @@
   {% block head %}{% endblock %}
 </head>
 <body class="qr-site">
-  {# Barra superior — padrão qr.com #}
   <div class="qr-topbar">
     <div class="container">
       <div class="qr-topbar-right">
         {% for L in languages %}
         <a href="{{ url_for('set_language', code=L.code) }}"
-           style="{% if lang == L.code %}color:#5c0a2c;font-weight:700{% endif %}">{{ L.code|upper }}</a>
+           {% if lang == L.code %}style="color:#5c0a2c;font-weight:700"{% endif %}>{{ L.code|upper }}</a>
         {% endfor %}
         <a href="{{ url_for('contacto') }}">{{ _('nav_help') }}</a>
         <a href="{{ contacto.whatsapp_link }}" target="_blank" rel="noopener">{{ _('nav_contact_us') }}</a>
@@ -138,8 +137,8 @@
           <h4>{{ _('nav_contact') }}</h4>
           <a href="tel:{{ contacto.telefone_raw }}">{{ contacto.telefone }}</a>
           <a href="mailto:{{ contacto.email }}">{{ contacto.email }}</a>
-          <span style="display:block;padding:4px 0;opacity:.75">{{ contacto.responsavel }}</span>
-          <span style="display:block;padding:4px 0;opacity:.75">{{ contacto.locais }}</span>
+          <span style="display:block;padding:4px 0;opacity:.8">{{ contacto.responsavel }}</span>
+          <span style="display:block;padding:4px 0;opacity:.8">{{ contacto.locais }}</span>
         </div>
       </div>
       <div class="qr-footer-bottom">

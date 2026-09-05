@@ -4,14 +4,15 @@
 {% block content %}
 <div class="page-header">
   <div class="container">
+    <span class="eyebrow">Férias &amp; experiências</span>
     <h1>Pacotes turísticos</h1>
-    <p>Experiências completas em Moçambique e no mundo</p>
+    <p>Experiências completas em Moçambique e no mundo — voo, estadia e apoio incluídos.</p>
   </div>
 </div>
 
 <section class="section">
   <div class="container">
-    <form method="get" class="form-card" style="max-width:100%;margin-bottom:1.5rem;display:flex;gap:.75rem;align-items:end;flex-wrap:wrap;padding:1rem 1.25rem">
+    <form method="get" class="form-card filter-bar">
       <div class="form-group" style="flex:1;min-width:200px;margin:0">
         <label for="q">Pesquisar</label>
         <input id="q" name="q" value="{{ q or '' }}" placeholder="Destino, título…">
@@ -33,12 +34,12 @@
           <div class="card-price">{{ p.preco|money(p.moeda) }} <span>/ pessoa</span></div>
           <div class="card-actions">
             <a class="btn btn-primary btn-sm" href="{{ url_for('pacote_detalhe', pid=p.id) }}">Ver detalhes</a>
-            <a class="btn btn-ghost btn-sm" href="{{ url_for('reserva', tipo='pacote', item_id=p.id) }}">Reservar passo a passo</a>
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('reserva', tipo='pacote', item_id=p.id) }}">Reservar</a>
           </div>
         </div>
       </article>
       {% else %}
-      <div class="empty" style="grid-column:1/-1">Nenhum pacote encontrado.</div>
+      <div class="empty" style="grid-column:1/-1">Nenhum pacote encontrado. Contacte-nos para uma proposta à medida.</div>
       {% endfor %}
     </div>
   </div>

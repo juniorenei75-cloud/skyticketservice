@@ -1,105 +1,53 @@
 {% extends "base.html" %}
-{% block title %}Bem-vindo · {{ agencia }}{% endblock %}
+{% block title %}{{ _('welcome') }} · {{ agencia }}{% endblock %}
 {% block og_title %}{{ agencia }} — {{ slogan }}{% endblock %}
 
 {% block content %}
-<section class="hero welcome-hero">
+<section class="welcome-hero">
   <div class="container welcome-box">
-    <p class="welcome-kicker">Bem-vindo à</p>
+    <img class="welcome-logo"
+         src="{{ url_for('static', filename='img/logo.jpg') }}"
+         alt="SKYTICKETservice" width="120" height="120">
+    <p class="welcome-kicker">{{ _('welcome_kicker') }}</p>
     <h1 class="welcome-title">
-      SKYTICKET<span style="color:#7dd3fc">service</span>
+      SKYTICKET<span>service</span>
     </h1>
     <p class="welcome-slogan">{{ slogan }}</p>
-    <p class="welcome-lead">
-      A melhor agência de viagens para o levar a qualquer parte do mundo —
-      com segurança, transparência e apoio 24 horas.
-    </p>
-    <p class="welcome-tagline">
-      «A única preocupação que deve ter é fazer as malas.»
-    </p>
+    <p class="welcome-lead">{{ _('welcome_lead') }}</p>
+    <p class="welcome-tagline">{{ _('welcome_tagline') }}</p>
 
     <div class="welcome-cta">
       <a class="btn btn-gold btn-continue" href="{{ url_for('reserva') }}">
-        Continuar
+        {{ _('continue') }}
+      </a>
+      <a class="btn btn-outline-light" href="{{ url_for('destinos') }}">
+        {{ _('nav_destinations') }}
       </a>
     </div>
 
-    <p class="welcome-meta">
-      Nampula (Agência Mãe) · Maputo · Beira · Online · 24h
-    </p>
+    <p class="welcome-meta">{{ _('locations') }}</p>
   </div>
 </section>
-{% endblock %}
 
-{% block head %}
-<style>
-  .welcome-hero {
-    min-height: calc(100vh - 140px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 3.5rem 0 4rem;
-  }
-  .welcome-box {
-    text-align: center;
-    max-width: 720px;
-  }
-  .welcome-kicker {
-    margin: 0 0 .5rem;
-    font-size: 1.05rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    opacity: 0.9;
-    font-weight: 600;
-  }
-  .welcome-title {
-    margin: 0 0 .75rem;
-    font-size: clamp(2.4rem, 6vw, 3.6rem);
-    letter-spacing: -0.03em;
-    line-height: 1.1;
-    max-width: none;
-  }
-  .welcome-slogan {
-    margin: 0 0 1.25rem;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #f5a623;
-  }
-  .welcome-lead {
-    margin: 0 auto 1rem;
-    font-size: 1.1rem;
-    opacity: 0.95;
-    max-width: 36em;
-    line-height: 1.55;
-  }
-  .welcome-tagline {
-    margin: 0 auto 2rem;
-    font-size: 1.05rem;
-    font-style: italic;
-    opacity: 0.88;
-    max-width: 28em;
-  }
-  .welcome-cta {
-    margin-bottom: 1.75rem;
-  }
-  .btn-continue {
-    font-size: 1.15rem;
-    padding: 0.95rem 2.75rem;
-    min-width: 200px;
-    box-shadow: 0 12px 32px rgba(245, 166, 35, 0.35);
-  }
-  .btn-continue:hover {
-    transform: translateY(-2px);
-  }
-  .welcome-meta {
-    margin: 0;
-    font-size: 0.9rem;
-    opacity: 0.75;
-  }
-  /* Esconder secções de catálogo na home — foco só no welcome */
-  main > .section,
-  main > .cta-band {
-    display: none;
-  }
-</style>
+<section class="section welcome-features">
+  <div class="container">
+    <div class="grid grid-3">
+      <div class="feature">
+        <div class="feature-icon">✈</div>
+        <h3>{{ _('nav_book_flight') }}</h3>
+        <p>Voos nacionais e internacionais com apoio personalizado em cada etapa.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🌍</div>
+        <h3>{{ _('nav_destinations') }}</h3>
+        <p>Do sonho ao destino — organizamos viagens para qualquer país do mundo.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🕒</div>
+        <h3>{{ _('hours_24_7') }}</h3>
+        <p>Nampula (Agência Mãe), Maputo, Beira e online — sempre disponíveis.</p>
+      </div>
+    </div>
+  </div>
+</section>
 {% endblock %}

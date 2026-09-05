@@ -5,24 +5,25 @@
 {% block content %}
 <div class="page-header">
   <div class="container">
+    <span class="eyebrow">{{ total }} países</span>
     <h1>Destinos em todo o mundo</h1>
     <p>
-      {{ total }} países · sem limites de continente.
-      A SKYTICKETservice organiza a sua viagem para <strong>qualquer destino</strong>.
+      Sem limites de continente. A SKYTICKETservice organiza a sua viagem
+      para <strong>qualquer destino</strong> — com segurança e transparência.
     </p>
   </div>
 </div>
 
 <section class="section">
   <div class="container">
-    <form method="get" class="form-card" style="max-width:100%;margin-bottom:1.5rem;display:flex;gap:.75rem;flex-wrap:wrap;align-items:end;padding:1rem 1.25rem">
+    <form method="get" class="form-card filter-bar">
       <div class="form-group" style="flex:2;min-width:200px;margin:0">
         <label for="q">Pesquisar país</label>
         <div class="country-picker"
              id="q"
              data-name="q"
              data-value="{{ q or '' }}"
-             data-placeholder="Clique ou digite — pré-visualiza os países existentes"></div>
+             data-placeholder="Clique ou digite — pré-visualiza os países"></div>
       </div>
       <div class="form-group" style="flex:1;min-width:160px;margin:0">
         <label for="continente">Continente</label>
@@ -44,10 +45,8 @@
     </p>
 
     {% for cont, lista in by_cont.items() %}
-    <div style="margin-bottom:2rem">
-      <h2 style="color:var(--navy);font-size:1.25rem;margin:0 0 .85rem">
-        {{ cont }} <span class="badge">{{ lista|length }}</span>
-      </h2>
+    <div class="continent-block">
+      <h2>{{ cont }} <span class="badge">{{ lista|length }}</span></h2>
       <div class="grid grid-4">
         {% for p in lista %}
         <article class="card">
@@ -73,7 +72,7 @@
     <div class="cta-band" style="border-radius:var(--radius);margin-top:1rem">
       <div class="container">
         <h2>Não encontrou o destino?</h2>
-        <p>Peça cotação para qualquer cidade e país — tratamos de tudo.</p>
+        <p>Peça cotação para qualquer cidade e país — tratamos de tudo por si.</p>
         <a class="btn btn-gold" href="{{ url_for('reserva', tipo='mundo') }}">Reservar para qualquer país</a>
       </div>
     </div>

@@ -1,8 +1,9 @@
 """Confirmação por e-mail e bilhete electrónico (e-ticket).
 
-Dois modos de envio:
-1. **brevo** (recomendado se a rede bloquear SMTP) — API HTTPS Brevo/Sendinblue
-2. **smtp** — Gmail ou outro servidor SMTP (portas 587/465)
+Três modos de envio:
+1. **sendgrid** — API HTTPS SendGrid (recomendado; porta 443)
+2. **brevo** — API HTTPS Brevo/Sendinblue (alternativa HTTPS)
+3. **smtp** — Gmail ou outro servidor SMTP (portas 587/465)
 
 Configuração: Admin → E-mail / SMTP  ou  smtp_config.json  ou  variáveis de ambiente.
 """
@@ -34,7 +35,7 @@ _logo_data_uri_cache: str | None = None
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "enabled": True,
-    # smtp | brevo  (brevo usa HTTPS — funciona quando a operadora bloqueia SMTP)
+    # smtp | brevo | sendgrid  (brevo/sendgrid usam HTTPS — funciona quando a operadora bloqueia SMTP)
     "provider": "smtp",
     "host": "smtp.gmail.com",
     "port": 587,
@@ -48,6 +49,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "admin_email": "skyticketservicee@gmail.com",
     # Brevo (https://app.brevo.com) — chave API
     "brevo_api_key": "",
+    # SendGrid (https://app.sendgrid.com) — chave API
+    "sendgrid_api_key": "",
 }
 
 
@@ -70,6 +73,7 @@ def load_smtp_config() -> dict[str, Any]:
         "MAIL_FROM_NAME": "from_name",
         "SMTP_ADMIN_EMAIL": "admin_email",
         "BREVO_API_KEY": "brevo_api_key",
+        "SENDGRID_API_KEY": "sendgrid_api_key",
         "EMAIL_PROVIDER": "provider",
     }
     for env_k, cfg_k in env_map.items():
@@ -118,6 +122,7 @@ def save_smtp_config(updates: dict[str, Any]) -> dict[str, Any]:
     # Password / API key: manter se o formulário enviar vazio
     old_password = file_cfg.get("password") or ""
     old_brevo = file_cfg.get("brevo_api_key") or ""
+    old_sendgrid = file_cfg.get("sendgrid_api_key") or ""
     file_cfg.update(updates)
     if not (updates.get("password") or "").strip():
         file_cfg["password"] = old_password
@@ -125,6 +130,8 @@ def save_smtp_config(updates: dict[str, Any]) -> dict[str, Any]:
         file_cfg["password"] = str(updates["password"]).replace(" ", "").strip()
     if "brevo_api_key" in updates and not (updates.get("brevo_api_key") or "").strip():
         file_cfg["brevo_api_key"] = old_brevo
+    if "sendgrid_api_key" in updates and not (updates.get("sendgrid_api_key") or "").strip():
+        file_cfg["sendgrid_api_key"] = old_sendgrid
 
     CONFIG_PATH.write_text(
         json.dumps(file_cfg, ensure_ascii=False, indent=2),
@@ -134,12 +141,22 @@ def save_smtp_config(updates: dict[str, Any]) -> dict[str, Any]:
 
 
 def smtp_is_ready(cfg: dict[str, Any] | None = None) -> tuple[bool, str]:
-    """Indica se o envio de e-mail está pronto (SMTP ou Brevo)."""
+    """Indica se o envio de e-mail está pronto (SMTP, Brevo ou SendGrid)."""
     cfg = cfg or load_smtp_config()
     if not cfg.get("enabled"):
         return False, "Envio de e-mail desactivado na configuração."
 
     provider = (cfg.get("provider") or "smtp").lower()
+    if provider == "sendgrid":
+        if not (cfg.get("sendgrid_api_key") or "").strip():
+            return (
+                False,
+                "Modo SendGrid: falta a chave API. Crie em app.sendgrid.com → Settings → API Keys.",
+            )
+        if not (cfg.get("mail_from") or cfg.get("user") or "").strip():
+            return False, "Modo SendGrid: indique o e-mail remetente (mail_from)."
+        return True, "SendGrid (API HTTPS) pronto a enviar."
+
     if provider == "brevo":
         if not (cfg.get("brevo_api_key") or "").strip():
             return (
@@ -159,7 +176,10 @@ def smtp_is_ready(cfg: dict[str, Any] | None = None) -> tuple[bool, str]:
             False,
             "Falta a palavra-passe SMTP. No Gmail use uma «palavra-passe de aplicação».",
         )
-    return True, "SMTP configurado (se a rede bloquear a porta 587/465, use o modo Brevo)."
+    return True, (
+        "SMTP configurado (se a rede bloquear a porta 587/465, "
+        "use o modo SendGrid ou Brevo)."
+    )
 
 
 def _format_money(value: float, moeda: str = "USD") -> str:
@@ -906,8 +926,8 @@ def _connection_blocked_hint(exc: BaseException) -> str:
     ):
         return (
             " A sua rede/operadora está a bloquear o SMTP do Gmail (portas 587/465). "
-            "Solução: no Admin → E-mail, escolha o modo «Brevo (API HTTPS)» "
-            "(grátis em app.brevo.com) — usa a porta 443 e costuma funcionar."
+            "Solução: no Admin → E-mail, escolha «SendGrid» ou «Brevo» (API HTTPS) "
+            "— usam a porta 443 e costumam funcionar."
         )
     return ""
 
@@ -972,6 +992,73 @@ def _send_via_brevo(
     except Exception as exc:  # noqa: BLE001
         logger.exception("Brevo error")
         return False, f"Falha Brevo: {exc}"
+
+
+def _send_via_sendgrid(
+    *,
+    to_email: str,
+    subject: str,
+    text_body: str,
+    html_body: str,
+    cfg: dict[str, Any],
+) -> tuple[bool, str]:
+    api_key = (cfg.get("sendgrid_api_key") or "").strip()
+    if not api_key:
+        return False, "Falta a chave API SendGrid."
+
+    mail_from = (cfg.get("mail_from") or cfg.get("user") or "").strip()
+    from_name = (cfg.get("from_name") or "SKYTICKETservice").strip()
+    if not mail_from:
+        return False, "Falta o e-mail remetente (mail_from)."
+
+    personalization: dict[str, Any] = {
+        "to": [{"email": to_email.strip()}],
+    }
+    if cfg.get("bcc_admin"):
+        admin = (cfg.get("admin_email") or mail_from).strip()
+        if admin and admin.lower() != to_email.strip().lower():
+            personalization["bcc"] = [{"email": admin}]
+
+    payload: dict[str, Any] = {
+        "personalizations": [personalization],
+        "from": {"email": mail_from, "name": from_name},
+        "subject": subject,
+        "content": [
+            {"type": "text/plain", "value": text_body or " "},
+            {"type": "text/html", "value": html_body or text_body or " "},
+        ],
+        "reply_to": {"email": mail_from, "name": from_name},
+    }
+
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.sendgrid.com/v3/mail/send",
+        data=data,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            # SendGrid devolve 202 Accepted sem corpo (ou quase vazio)
+            body = resp.read().decode("utf-8", errors="replace")
+            logger.info("SendGrid OK (HTTP %s): %s", resp.status, body[:200])
+        return True, f"E-mail enviado para {to_email.strip()} (via SendGrid)."
+    except urllib.error.HTTPError as exc:
+        err_body = exc.read().decode("utf-8", errors="replace")
+        if exc.code in (400, 401, 403):
+            return (
+                False,
+                f"SendGrid recusou o envio (HTTP {exc.code}): {err_body[:280]}. "
+                f"Confirme a API key e que o remetente {mail_from} está verificado em "
+                f"SendGrid → Sender Authentication.",
+            )
+        return False, f"SendGrid HTTP {exc.code}: {err_body[:280]}"
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("SendGrid error")
+        return False, f"Falha SendGrid: {exc}"
 
 
 def _smtp_send_once(
@@ -1078,6 +1165,23 @@ def _send_via_smtp(
     return False, f"Falha no envio de e-mail: {last_err}.{hint}"
 
 
+def _brevo_activation_failure(msg: str) -> bool:
+    """True se Brevo falhou por conta/remetente ainda não activado."""
+    m = (msg or "").lower()
+    keys = (
+        "activation",
+        "not yet activated",
+        "sender",
+        "unrecognised",
+        "unrecognized",
+        "not verified",
+        "não verificado",
+        "http 401",
+        "http 403",
+    )
+    return any(k in m for k in keys)
+
+
 def _send_raw(
     *,
     to_email: str,
@@ -1095,14 +1199,54 @@ def _send_raw(
 
     provider = (cfg.get("provider") or "smtp").lower()
 
-    if provider == "brevo":
-        return _send_via_brevo(
+    # Preferência: SendGrid quando seleccionado
+    if provider == "sendgrid":
+        return _send_via_sendgrid(
             to_email=to_email,
             subject=subject,
             text_body=text_body,
             html_body=html_body,
             cfg=cfg,
         )
+
+    if provider == "brevo":
+        ok, msg = _send_via_brevo(
+            to_email=to_email,
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+            cfg=cfg,
+        )
+        # Fallback documentado: se Brevo falhar por activação e houver SendGrid
+        if (
+            not ok
+            and _brevo_activation_failure(msg)
+            and (cfg.get("sendgrid_api_key") or "").strip()
+        ):
+            logger.info(
+                "Brevo falhou (activação/remetente) — a tentar SendGrid automaticamente"
+            )
+            ok2, msg2 = _send_via_sendgrid(
+                to_email=to_email,
+                subject=subject,
+                text_body=text_body,
+                html_body=html_body,
+                cfg=cfg,
+            )
+            if ok2:
+                return True, msg2 + " (Brevo falhou por activação; usado SendGrid.)"
+            return False, (
+                f"{msg} | Fallback SendGrid: {msg2}. "
+                "Se a conta Brevo ainda não estiver activada, defina provider=sendgrid "
+                "no Admin → E-mail."
+            )
+        if not ok and _brevo_activation_failure(msg):
+            return False, (
+                f"{msg} "
+                "Sugestão: se a conta Brevo ainda não estiver activada, use o modo "
+                "SendGrid (API HTTPS) em Admin → E-mail."
+            )
+        return ok, msg
 
     ok, msg = _send_via_smtp(
         to_email=to_email,
@@ -1111,21 +1255,32 @@ def _send_raw(
         html_body=html_body,
         cfg=cfg,
     )
-    # Se SMTP falhar por rede e houver chave Brevo, tentar automaticamente
-    if not ok and (cfg.get("brevo_api_key") or "").strip() and _connection_blocked_hint(
-        Exception(msg)
-    ):
-        logger.info("SMTP bloqueado — a tentar Brevo automaticamente")
-        ok2, msg2 = _send_via_brevo(
-            to_email=to_email,
-            subject=subject,
-            text_body=text_body,
-            html_body=html_body,
-            cfg=cfg,
-        )
-        if ok2:
-            return True, msg2 + " (SMTP falhou; usado Brevo.)"
-        return False, f"{msg} | Fallback Brevo: {msg2}"
+    # Se SMTP falhar por rede, tentar HTTPS (SendGrid preferido, depois Brevo)
+    if not ok and _connection_blocked_hint(Exception(msg)):
+        if (cfg.get("sendgrid_api_key") or "").strip():
+            logger.info("SMTP bloqueado — a tentar SendGrid automaticamente")
+            ok2, msg2 = _send_via_sendgrid(
+                to_email=to_email,
+                subject=subject,
+                text_body=text_body,
+                html_body=html_body,
+                cfg=cfg,
+            )
+            if ok2:
+                return True, msg2 + " (SMTP falhou; usado SendGrid.)"
+            msg = f"{msg} | Fallback SendGrid: {msg2}"
+        if (cfg.get("brevo_api_key") or "").strip():
+            logger.info("SMTP bloqueado — a tentar Brevo automaticamente")
+            ok3, msg3 = _send_via_brevo(
+                to_email=to_email,
+                subject=subject,
+                text_body=text_body,
+                html_body=html_body,
+                cfg=cfg,
+            )
+            if ok3:
+                return True, msg3 + " (SMTP falhou; usado Brevo.)"
+            return False, f"{msg} | Fallback Brevo: {msg3}"
     return ok, msg
 
 

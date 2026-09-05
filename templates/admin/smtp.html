@@ -32,13 +32,26 @@
     A senha de aplicação está correcta, mas o servidor fecha a ligação.
   </p>
   <p style="margin:0;color:var(--muted);line-height:1.6">
-    <strong>Solução recomendada:</strong> use o modo <strong>Brevo (API HTTPS)</strong> abaixo
-    — grátis (300 e-mails/dia), funciona pela porta 443 como um site normal.
+    <strong>Solução recomendada:</strong> use o modo <strong>SendGrid</strong> ou
+    <strong>Brevo (API HTTPS)</strong> abaixo — usam a porta 443 como um site normal.
   </p>
 </div>
 
+<div class="form-card" style="max-width:760px;margin-bottom:1.25rem;background:#ecfdf5;border:1px solid #6ee7b7">
+  <h2 style="margin-top:0;color:var(--navy);font-size:1.1rem">Como activar SendGrid (recomendado)</h2>
+  <ol style="color:var(--muted);line-height:1.75;padding-left:1.2rem;margin:0">
+    <li>Crie conta em
+      <a href="https://signup.sendgrid.com/" target="_blank" rel="noopener">sendgrid.com</a>.</li>
+    <li>Vá a <strong>Settings → API Keys</strong> → Create API Key
+      (permissão <em>Mail Send</em>).</li>
+    <li>Em <strong>Sender Authentication</strong>, verifique o remetente
+      <code>skyticketservicee@gmail.com</code> (ou o e-mail From).</li>
+    <li>Abaixo: modo = <strong>SendGrid</strong>, cole a API key, guarde e teste.</li>
+  </ol>
+</div>
+
 <div class="form-card" style="max-width:760px;margin-bottom:1.25rem;background:#f0f9ff;border:1px solid #bae6fd">
-  <h2 style="margin-top:0;color:var(--navy);font-size:1.1rem">Como activar Brevo (5 minutos)</h2>
+  <h2 style="margin-top:0;color:var(--navy);font-size:1.1rem">Como activar Brevo (alternativa)</h2>
   <ol style="color:var(--muted);line-height:1.75;padding-left:1.2rem;margin:0">
     <li>Crie conta grátis em
       <a href="https://app.brevo.com/account/register" target="_blank" rel="noopener">app.brevo.com</a>
@@ -48,7 +61,8 @@
       <a href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noopener">criar chave API</a>.</li>
     <li>Em <strong>Senders</strong>, adicione e verifique
       <code>skyticketservicee@gmail.com</code> (ou o e-mail que quiser como remetente).</li>
-    <li>Abaixo: modo = <strong>Brevo</strong>, cole a API key, guarde e teste.</li>
+    <li>Abaixo: modo = <strong>Brevo</strong>, cole a API key, guarde e teste.
+      Se a conta Brevo ainda não estiver activada, use SendGrid.</li>
   </ol>
 </div>
 
@@ -65,13 +79,25 @@
   <div class="form-group">
     <label for="provider">Modo de envio *</label>
     <select id="provider" name="provider" required>
-      <option value="brevo" {% if cfg.provider == 'brevo' %}selected{% endif %}>
-        Brevo (API HTTPS) — recomendado se Gmail SMTP falhar
+      <option value="sendgrid" {% if cfg.provider == 'sendgrid' %}selected{% endif %}>
+        SendGrid (API HTTPS) — recomendado
       </option>
-      <option value="smtp" {% if cfg.provider != 'brevo' %}selected{% endif %}>
+      <option value="brevo" {% if cfg.provider == 'brevo' %}selected{% endif %}>
+        Brevo (API HTTPS) — alternativa
+      </option>
+      <option value="smtp" {% if cfg.provider == 'smtp' or not cfg.provider %}selected{% endif %}>
         SMTP Gmail / outro servidor
       </option>
     </select>
+  </div>
+
+  <h3 style="color:var(--navy);font-size:1.05rem">SendGrid (API)</h3>
+  <div class="form-group">
+    <label for="sendgrid_api_key">Chave API SendGrid</label>
+    <input id="sendgrid_api_key" name="sendgrid_api_key" type="password"
+           value=""
+           placeholder="{% if has_sendgrid %}•••••••• (já guardada — deixe vazio para manter){% else %}SG.…{% endif %}"
+           autocomplete="new-password">
   </div>
 
   <h3 style="color:var(--navy);font-size:1.05rem">Brevo (API)</h3>
@@ -83,7 +109,7 @@
            autocomplete="new-password">
   </div>
 
-  <h3 style="color:var(--navy);font-size:1.05rem">Remetente (comum aos dois modos)</h3>
+  <h3 style="color:var(--navy);font-size:1.05rem">Remetente (comum a todos os modos)</h3>
   <div class="form-grid">
     <div class="form-group">
       <label for="mail_from">E-mail remetente (From)</label>
@@ -155,7 +181,7 @@
 <form method="post" class="form-card" style="max-width:760px;margin-top:1.25rem">
   <input type="hidden" name="action" value="test">
   <h3 style="margin-top:0;color:var(--navy);font-size:1.05rem">Enviar e-mail de teste</h3>
-  <p class="card-meta">Depois de guardar o modo Brevo + API key, teste aqui.</p>
+  <p class="card-meta">Depois de guardar o modo (SendGrid / Brevo / SMTP) + chave, teste aqui.</p>
   <div class="form-group">
     <label for="test_email">Enviar para</label>
     <input id="test_email" name="test_email" type="email" required

@@ -1360,8 +1360,9 @@ def admin_smtp():
             port = 587
         password = request.form.get("password", "")
         brevo_key = request.form.get("brevo_api_key", "")
+        sendgrid_key = request.form.get("sendgrid_api_key", "")
         provider = (request.form.get("provider") or "smtp").strip().lower()
-        if provider not in ("smtp", "brevo"):
+        if provider not in ("smtp", "brevo", "sendgrid"):
             provider = "smtp"
         updates = {
             "enabled": request.form.get("enabled") == "1",
@@ -1380,6 +1381,7 @@ def admin_smtp():
             or request.form.get("user", "").strip()
             or request.form.get("mail_from", "").strip(),
             "brevo_api_key": "",  # placeholder; só grava se preenchido
+            "sendgrid_api_key": "",  # placeholder; só grava se preenchido
         }
         if password.strip():
             updates["password"] = password.strip()
@@ -1388,6 +1390,10 @@ def admin_smtp():
         else:
             # não apagar chave antiga
             updates.pop("brevo_api_key", None)
+        if sendgrid_key.strip():
+            updates["sendgrid_api_key"] = sendgrid_key.strip()
+        else:
+            updates.pop("sendgrid_api_key", None)
         save_smtp_config(updates)
         flash("Configuração de e-mail guardada.", "success")
         ready, status = smtp_is_ready()
@@ -1403,9 +1409,11 @@ def admin_smtp():
     ready, status_msg = smtp_is_ready(cfg)
     has_password = bool((cfg.get("password") or "").strip())
     has_brevo = bool((cfg.get("brevo_api_key") or "").strip())
+    has_sendgrid = bool((cfg.get("sendgrid_api_key") or "").strip())
     safe_cfg = dict(cfg)
     safe_cfg["password"] = ""
     safe_cfg["brevo_api_key"] = ""
+    safe_cfg["sendgrid_api_key"] = ""
     return render_template(
         "admin/smtp.html",
         cfg=safe_cfg,
@@ -1413,6 +1421,7 @@ def admin_smtp():
         status_msg=status_msg,
         has_password=has_password,
         has_brevo=has_brevo,
+        has_sendgrid=has_sendgrid,
     )
 
 

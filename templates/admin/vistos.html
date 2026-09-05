@@ -29,6 +29,8 @@
         <td>{{ p.nome }}<br><span class="card-meta" style="font-size:.8rem">{{ p.email }} · {{ p.telefone }}</span>
           {% if p.passaporte %}<br><span class="card-meta" style="font-size:.78rem">Passaporte: {{ p.passaporte }}</span>{% endif %}
           {% if p.notas %}<br><span class="card-meta" style="font-size:.78rem">{{ p.notas }}</span>{% endif %}
+          {% if p.sherpa_product_id %}<br><span class="card-meta" style="font-size:.78rem">Sherpa product: {{ p.sherpa_product_id }}</span>{% endif %}
+          {% if p.sherpa_info %}<br><span class="card-meta" style="font-size:.72rem;white-space:pre-wrap;max-width:18rem;display:inline-block">{{ p.sherpa_info[:400] }}{% if p.sherpa_info and p.sherpa_info|length > 400 %}…{% endif %}</span>{% endif %}
         </td>
         <td>🌍 {{ p.pais_destino }}<br><span class="card-meta" style="font-size:.78rem">Nac.: {{ p.nacionalidade }}</span>
           <br><span class="badge badge-gold" style="font-size:.7rem">{{ propositos.get(p.proposito, p.proposito) }}</span>

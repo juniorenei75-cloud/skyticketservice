@@ -158,6 +158,18 @@ def init_db():
         if col not in cols:
             cur.execute(f"ALTER TABLE reservas ADD COLUMN {col} {decl}")
 
+    # Pedidos de visto — dados opcionais Sherpa
+    visto_cols = {
+        r[1]
+        for r in cur.execute("PRAGMA table_info(pedidos_visto)").fetchall()
+    }
+    for col, decl in (
+        ("sherpa_product_id", "TEXT"),
+        ("sherpa_info", "TEXT"),
+    ):
+        if col not in visto_cols:
+            cur.execute(f"ALTER TABLE pedidos_visto ADD COLUMN {col} {decl}")
+
     # Sempre sincroniza a lista mundial de países (completa, sem limites)
     cur.execute("DELETE FROM paises")
     cur.executemany(

@@ -46,6 +46,12 @@ from flight_search import (
     search_duffel,
     search_kiwi_tequila,
 )
+from visa_api import (
+    load_visa_api_config,
+    lookup_visa_info,
+    save_visa_api_config,
+    status_summary as visa_api_status,
+)
 from notifications import (
     load_config as load_whatsapp_config,
     mensagem_contacto,
@@ -499,12 +505,55 @@ STATUS_VISTO = (
 
 @app.route("/vistos")
 def vistos():
-    return render_template("vistos.html")
+    ready, sherpa_status = visa_api_status()
+    return render_template(
+        "vistos.html",
+        sherpa_ready=ready,
+        sherpa_status=sherpa_status,
+    )
+
+
+@app.route("/vistos/consultar", methods=["GET", "POST"])
+def vistos_consultar():
+    """Consulta requisitos + produtos Sherpa (form GET/POST ou redirect para solicitar)."""
+    if request.method == "POST":
+        destino = request.form.get("pais_destino", "").strip()
+        nacionalidade = request.form.get("nacionalidade", "").strip()
+        data_inicio = request.form.get("data_viagem_inicio", "").strip()
+    else:
+        destino = request.args.get("pais_destino", "").strip()
+        nacionalidade = request.args.get("nacionalidade", "").strip()
+        data_inicio = request.args.get("data_viagem_inicio", "").strip()
+    lang = session.get("lang") or "pt"
+    locale = "en-US" if str(lang).startswith("en") else "pt-PT"
+    sherpa = None
+    if destino and nacionalidade:
+        sherpa = lookup_visa_info(
+            nacionalidade,
+            destino,
+            locale=locale,
+            departure_date=data_inicio or None,
+        )
+    return render_template(
+        "vistos_solicitar.html",
+        propositos=PROPOSITOS_VISTO,
+        form_destino=destino,
+        form_nacionalidade=nacionalidade,
+        form_data_inicio=data_inicio,
+        sherpa=sherpa,
+        consult_mode=True,
+    )
 
 
 @app.route("/vistos/solicitar", methods=["GET", "POST"])
 def vistos_solicitar():
+    form_destino = request.args.get("pais_destino", "").strip()
+    form_nacionalidade = request.args.get("nacionalidade", "").strip()
+    form_data_inicio = request.args.get("data_viagem_inicio", "").strip()
+    sherpa = None
+
     if request.method == "POST":
+        action = (request.form.get("action") or "submit").strip()
         pais_destino = request.form.get("pais_destino", "").strip()
         nacionalidade = request.form.get("nacionalidade", "").strip()
         proposito = request.form.get("proposito", "").strip()
@@ -516,11 +565,48 @@ def vistos_solicitar():
         passaporte = request.form.get("passaporte", "").strip()
         notas = request.form.get("notas", "").strip()
         consent = request.form.get("consentimento")
+        sherpa_product_id = request.form.get("sherpa_product_id", "").strip()
+        sherpa_info = request.form.get("sherpa_info", "").strip()
         try:
             num = int(request.form.get("num_requerentes") or "1")
         except ValueError:
             num = 1
         num = max(1, min(num, 20))
+
+        form_destino = pais_destino
+        form_nacionalidade = nacionalidade
+        form_data_inicio = data_inicio
+
+        lang = session.get("lang") or "pt"
+        locale = "en-US" if str(lang).startswith("en") else "pt-PT"
+
+        if action == "consultar":
+            if not pais_destino or not nacionalidade:
+                flash("Seleccione destino e nacionalidade para consultar a Sherpa.", "error")
+            else:
+                sherpa = lookup_visa_info(
+                    nacionalidade,
+                    pais_destino,
+                    locale=locale,
+                    departure_date=data_inicio or None,
+                )
+            return render_template(
+                "vistos_solicitar.html",
+                propositos=PROPOSITOS_VISTO,
+                form_destino=form_destino,
+                form_nacionalidade=form_nacionalidade,
+                form_data_inicio=form_data_inicio,
+                form_data_fim=data_fim,
+                form_proposito=proposito,
+                form_num=num,
+                form_nome=nome,
+                form_email=email,
+                form_telefone=telefone,
+                form_passaporte=passaporte,
+                form_notas=notas,
+                sherpa=sherpa,
+                sherpa_product_id=sherpa_product_id,
+            )
 
         if not pais_destino or not nacionalidade or not proposito or not nome or not email or not telefone:
             flash("Preencha todos os campos obrigatórios.", "error")
@@ -529,19 +615,48 @@ def vistos_solicitar():
         elif proposito not in dict(PROPOSITOS_VISTO):
             flash("Propósito de viagem inválido.", "error")
         else:
+            # Enriquecer com snippet Sherpa se ainda não veio do formulário
+            if not sherpa_info and pais_destino and nacionalidade:
+                try:
+                    info = lookup_visa_info(
+                        nacionalidade,
+                        pais_destino,
+                        locale=locale,
+                        departure_date=data_inicio or None,
+                    )
+                    req = (info or {}).get("requirements") or {}
+                    prods = (info or {}).get("products") or {}
+                    bits = []
+                    if req.get("snippet"):
+                        bits.append(req["snippet"])
+                    for p in (prods.get("products") or [])[:3]:
+                        bits.append(
+                            f"Produto: {p.get('name')} "
+                            f"({p.get('currency')} {p.get('price')}) "
+                            f"id={p.get('product_id')}"
+                        )
+                    sherpa_info = "\n".join(bits)[:1500]
+                    if not sherpa_product_id and (prods.get("products") or []):
+                        sherpa_product_id = (prods["products"][0].get("product_id") or "")
+                except Exception:
+                    pass
+
             codigo = gerar_codigo("VISA")
             db = get_db()
             db.execute(
                 """INSERT INTO pedidos_visto
                    (codigo, pais_destino, nacionalidade, proposito,
                     data_viagem_inicio, data_viagem_fim, num_requerentes,
-                    nome, email, telefone, passaporte, notas, status)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    nome, email, telefone, passaporte, notas, status,
+                    sherpa_product_id, sherpa_info)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     codigo, pais_destino, nacionalidade, proposito,
                     data_inicio or None, data_fim or None, num,
                     nome, email, telefone, passaporte or None, notas or None,
                     "pendente",
+                    sherpa_product_id or None,
+                    sherpa_info or None,
                 ),
             )
             db.commit()
@@ -549,9 +664,35 @@ def vistos_solicitar():
             session["visto_ok_codigo"] = codigo
             return redirect(url_for("vistos_sucesso"))
 
+        # Re-show form with errors — still try Sherpa panel if countries set
+        if pais_destino and nacionalidade:
+            sherpa = lookup_visa_info(
+                nacionalidade,
+                pais_destino,
+                locale=locale,
+                departure_date=data_inicio or None,
+            )
+
+    elif form_destino and form_nacionalidade:
+        lang = session.get("lang") or "pt"
+        locale = "en-US" if str(lang).startswith("en") else "pt-PT"
+        sherpa = lookup_visa_info(
+            form_nacionalidade,
+            form_destino,
+            locale=locale,
+            departure_date=form_data_inicio or None,
+        )
+
+    ready, sherpa_status = visa_api_status()
     return render_template(
         "vistos_solicitar.html",
         propositos=PROPOSITOS_VISTO,
+        form_destino=form_destino,
+        form_nacionalidade=form_nacionalidade,
+        form_data_inicio=form_data_inicio,
+        sherpa=sherpa,
+        sherpa_ready=ready,
+        sherpa_status=sherpa_status,
     )
 
 
@@ -606,6 +747,62 @@ def admin_visto_status(vid: int):
     flash("Estado do pedido de visto actualizado.", "success")
     return redirect(url_for("admin_vistos", status=request.args.get("status") or None))
 
+
+@app.route("/admin/vistos-api", methods=["GET", "POST"])
+@login_required
+def admin_vistos_api():
+    """Configurar Sherpa (requisitos de visto + produtos eVisa)."""
+    cfg = load_visa_api_config()
+    test_result = ""
+    test_ok = False
+    if request.method == "POST":
+        action = (request.form.get("action") or "save").strip()
+        updates = {
+            "sherpa_api_key": request.form.get("sherpa_api_key", "").strip(),
+            "sherpa_env": (request.form.get("sherpa_env") or "sandbox").strip().lower(),
+        }
+        try:
+            updates["agency_markup_percent"] = float(
+                (request.form.get("agency_markup_percent") or "5").replace(",", ".")
+            )
+        except ValueError:
+            updates["agency_markup_percent"] = 5.0
+        if updates["sherpa_env"] not in ("sandbox", "live"):
+            updates["sherpa_env"] = "sandbox"
+        cfg = save_visa_api_config(updates)
+        if action == "test":
+            ready, msg = visa_api_status(cfg)
+            if not ready:
+                test_result = msg
+                test_ok = False
+            else:
+                info = lookup_visa_info("Mozambique", "Turkey", locale="en-US", cfg=cfg)
+                req_ok = bool((info.get("requirements") or {}).get("ok"))
+                n_prod = len(((info.get("products") or {}).get("products") or []))
+                test_ok = req_ok or n_prod > 0
+                test_result = (
+                    f"{msg} Teste MOZ→TUR: requisitos={'ok' if req_ok else 'falhou'}, "
+                    f"produtos={n_prod}. "
+                    f"req_err={(info.get('requirements') or {}).get('raw_error') or '-'}; "
+                    f"prod_err={(info.get('products') or {}).get('raw_error') or '-'}."
+                )
+            flash(
+                "Teste concluído." if test_ok else "Teste sem dados Sherpa.",
+                "success" if test_ok else "warning",
+            )
+        else:
+            flash("Configuração Sherpa (vistos) guardada.", "success")
+            return redirect(url_for("admin_vistos_api"))
+
+    ready, status_msg = visa_api_status(cfg)
+    return render_template(
+        "admin/vistos_api.html",
+        cfg=cfg,
+        ready=ready,
+        status_msg=status_msg,
+        test_result=test_result,
+        test_ok=test_ok,
+    )
 
 
 # ---------------------------------------------------------------------------

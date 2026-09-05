@@ -8,6 +8,14 @@
 .visa-steps span{background:#f9f0f4;color:#5c0a2c;border:1px solid #e8e0e4;padding:.35rem .7rem;border-radius:999px;font-size:.8rem;font-weight:600}
 .visa-check{display:flex;gap:.6rem;align-items:flex-start;margin:1rem 0}
 .visa-check input{margin-top:.25rem}
+.sherpa-box{margin:1.25rem 0;padding:1.25rem 1.4rem;border-radius:14px;border:1px solid #e8e0e4;background:#fff}
+.sherpa-box h3{margin:0 0 .5rem;color:#5c0a2c;font-family:var(--font-display,Georgia,serif)}
+.sherpa-box .muted{color:#6b5c63;font-size:.92rem;line-height:1.5}
+.sherpa-item{padding:.65rem 0;border-bottom:1px solid #f0e8ec}
+.sherpa-item:last-child{border-bottom:none}
+.sherpa-prod{display:flex;flex-wrap:wrap;gap:.75rem;justify-content:space-between;align-items:flex-start;padding:.85rem 0;border-bottom:1px solid #f0e8ec}
+.sherpa-prod strong{color:#5c0a2c}
+.sherpa-price{font-weight:700;color:#2a7a3a;white-space:nowrap}
 </style>
 {% endblock %}
 {% block content %}
@@ -20,19 +28,25 @@
 </div>
 <section class="section">
   <div class="container visa-form-wrap">
+    {% if sherpa_status is defined and sherpa_status %}
+    <div class="flash {% if sherpa_ready %}success{% else %}warning{% endif %}" style="margin-bottom:1rem">
+      {{ sherpa_status }}
+    </div>
+    {% endif %}
+
     <form method="post" class="form-card" style="max-width:100%">
       <div class="visa-steps">
-        <span>1 · Destino</span><span>2 · Viagem</span><span>3 · Contacto</span>
+        <span>1 · Destino</span><span>2 · Sherpa</span><span>3 · Contacto</span>
       </div>
       <div class="form-grid">
         <div class="form-group full">
           <label>País de destino *</label>
-          <div class="country-picker" data-name="pais_destino" data-value="" data-required="1"
+          <div class="country-picker" data-name="pais_destino" data-value="{{ form_destino or '' }}" data-required="1"
                data-placeholder="Seleccione o país de destino…"></div>
         </div>
         <div class="form-group full">
           <label>Nacionalidade / país do passaporte *</label>
-          <div class="country-picker" data-name="nacionalidade" data-value="" data-required="1"
+          <div class="country-picker" data-name="nacionalidade" data-value="{{ form_nacionalidade or '' }}" data-required="1"
                data-placeholder="Seleccione a nacionalidade…"></div>
         </div>
         <div class="form-group">
@@ -40,48 +54,109 @@
           <select id="proposito" name="proposito" required>
             <option value="">Seleccione…</option>
             {% for val, label in propositos %}
-            <option value="{{ val }}">{{ label }}</option>
+            <option value="{{ val }}" {% if form_proposito == val %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
         </div>
         <div class="form-group">
           <label for="num_requerentes">N.º de requerentes *</label>
-          <input id="num_requerentes" name="num_requerentes" type="number" min="1" max="20" value="1" required>
+          <input id="num_requerentes" name="num_requerentes" type="number" min="1" max="20" value="{{ form_num or 1 }}" required>
         </div>
         <div class="form-group">
           <label for="data_viagem_inicio">Data prevista de ida</label>
-          <input id="data_viagem_inicio" name="data_viagem_inicio" type="date">
+          <input id="data_viagem_inicio" name="data_viagem_inicio" type="date" value="{{ form_data_inicio or '' }}">
         </div>
         <div class="form-group">
           <label for="data_viagem_fim">Data prevista de regresso</label>
-          <input id="data_viagem_fim" name="data_viagem_fim" type="date">
+          <input id="data_viagem_fim" name="data_viagem_fim" type="date" value="{{ form_data_fim or '' }}">
         </div>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:.6rem;margin:.5rem 0 1rem">
+        <button class="btn btn-ghost" type="submit" name="action" value="consultar" formnovalidate>Consultar requisitos Sherpa</button>
+      </div>
+
+      {% set req = sherpa.requirements if sherpa else None %}
+      {% set prods = sherpa.products if sherpa else None %}
+      <div class="sherpa-box" id="sherpa-panel">
+        <h3>Requisitos e eVisa (Sherpa)</h3>
+        {% if not sherpa %}
+          <p class="muted">Seleccione destino e nacionalidade e clique em <strong>Consultar requisitos Sherpa</strong>. Sem chave API, verá a mensagem de configuração — o pedido manual continua disponível.</p>
+        {% else %}
+          <p class="muted">{{ sherpa.status_msg }}</p>
+          {% if sherpa.origin_iso3 and sherpa.destination_iso3 %}
+          <p class="muted" style="margin-top:.35rem">Rota ISO: <code>{{ sherpa.origin_iso3 }}</code> → <code>{{ sherpa.destination_iso3 }}</code></p>
+          {% endif %}
+
+          {% if req %}
+          <h4 style="margin:1rem 0 .4rem;color:#5c0a2c">Requisitos</h4>
+          <p class="muted">{{ req.summary }}</p>
+          {% if req['items'] %}
+            {% for it in req['items'][:10] %}
+            <div class="sherpa-item">
+              <strong>{{ it.title }}</strong>
+              {% if it.category %}<span class="muted"> · {{ it.category }}</span>{% endif %}
+              {% if it.description %}<div class="muted" style="margin-top:.25rem">{{ it.description }}</div>{% endif %}
+            </div>
+            {% endfor %}
+          {% endif %}
+          {% endif %}
+
+          {% if prods %}
+          <h4 style="margin:1.1rem 0 .4rem;color:#5c0a2c">Produtos eVisa</h4>
+          <p class="muted">{{ prods.message }}</p>
+          {% if prods['products'] %}
+            {% for p in prods['products'] %}
+            <label class="sherpa-prod" style="cursor:pointer">
+              <span style="display:flex;gap:.55rem;align-items:flex-start;max-width:70%">
+                <input type="radio" name="sherpa_product_id" value="{{ p.product_id }}"
+                       {% if sherpa_product_id == p.product_id or (not sherpa_product_id and loop.first) %}checked{% endif %}
+                       style="margin-top:.3rem">
+                <span>
+                  <strong>{{ p.name }}</strong>
+                  {% if p.sub_type %}<span class="muted"> · {{ p.sub_type }}</span>{% endif %}
+                  {% if p.processing_time %}<div class="muted" style="font-size:.85rem">Processamento: {{ p.processing_time }}</div>{% endif %}
+                  {% if p.description %}<div class="muted" style="font-size:.85rem;margin-top:.2rem">{{ p.description }}</div>{% endif %}
+                </span>
+              </span>
+              <span class="sherpa-price">
+                {% if p.price %}{{ p.currency }} {{ '%.2f'|format(p.price) }}{% else %}—{% endif %}
+              </span>
+            </label>
+            {% endfor %}
+          {% endif %}
+          {% endif %}
+
+        {% endif %}
+      </div>
+
+      <div class="form-grid">
         <div class="form-group">
           <label for="nome">Nome completo *</label>
-          <input id="nome" name="nome" required autocomplete="name">
+          <input id="nome" name="nome" required autocomplete="name" value="{{ form_nome or '' }}">
         </div>
         <div class="form-group">
           <label for="email">E-mail *</label>
-          <input id="email" type="email" name="email" required autocomplete="email">
+          <input id="email" type="email" name="email" required autocomplete="email" value="{{ form_email or '' }}">
         </div>
         <div class="form-group">
           <label for="telefone">Telefone / WhatsApp *</label>
-          <input id="telefone" name="telefone" required autocomplete="tel" placeholder="+258 …">
+          <input id="telefone" name="telefone" required autocomplete="tel" placeholder="+258 …" value="{{ form_telefone or '' }}">
         </div>
         <div class="form-group">
           <label for="passaporte">N.º do passaporte (opcional)</label>
-          <input id="passaporte" name="passaporte" autocomplete="off">
+          <input id="passaporte" name="passaporte" autocomplete="off" value="{{ form_passaporte or '' }}">
         </div>
         <div class="form-group full">
           <label for="notas">Notas / observações</label>
-          <textarea id="notas" name="notas" rows="3" placeholder="Detalhes úteis para o pedido…"></textarea>
+          <textarea id="notas" name="notas" rows="3" placeholder="Detalhes úteis para o pedido…">{{ form_notas or '' }}</textarea>
         </div>
       </div>
       <label class="visa-check">
         <input type="checkbox" name="consentimento" value="1" required>
         <span>Autorizo a SKYTICKETservice a contactar-me sobre este pedido de visto e a tratar os dados indicados. *</span>
       </label>
-      <button class="btn btn-primary" type="submit">Enviar pedido de visto</button>
+      <button class="btn btn-primary" type="submit" name="action" value="submit">Enviar pedido de visto</button>
       <a class="btn btn-ghost" href="{{ url_for('vistos') }}">Voltar</a>
     </form>
   </div>

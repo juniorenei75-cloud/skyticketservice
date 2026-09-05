@@ -22,7 +22,8 @@
       <ul class="admin-nav">
         <li><a href="{{ url_for('admin_dashboard') }}" class="{% if request.endpoint == 'admin_dashboard' %}active{% endif %}">📊 Dashboard</a></li>
         <li><a href="{{ url_for('admin_reservas') }}" class="{% if request.endpoint and 'reserva' in request.endpoint %}active{% endif %}">📋 Reservas</a></li>
-        <li><a href="{{ url_for('admin_vistos') }}" class="{% if request.endpoint and 'visto' in request.endpoint %}active{% endif %}">🛂 Vistos</a></li>
+        <li><a href="{{ url_for('admin_vistos') }}" class="{% if request.endpoint == 'admin_vistos' or request.endpoint == 'admin_visto_status' %}active{% endif %}">🛂 Vistos</a></li>
+        <li><a href="{{ url_for('admin_vistos_api') }}" class="{% if request.endpoint == 'admin_vistos_api' %}active{% endif %}">🌐 Vistos API</a></li>
         <li><a href="{{ url_for('admin_pacotes') }}" class="{% if request.endpoint and 'pacote' in request.endpoint %}active{% endif %}">🧳 Pacotes</a></li>
         <li><a href="{{ url_for('admin_voos') }}" class="{% if request.endpoint == 'admin_voos' or (request.endpoint and 'admin_voo_' in request.endpoint) %}active{% endif %}">✈ Voos catálogo</a></li>
         <li><a href="{{ url_for('admin_voos_api') }}" class="{% if request.endpoint == 'admin_voos_api' %}active{% endif %}">🌐 Voos tempo real</a></li>

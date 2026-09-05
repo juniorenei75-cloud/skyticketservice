@@ -1,0 +1,70 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Vistos API (Sherpa){% endblock %}
+
+{% block content %}
+<div class="admin-card">
+  <h1>🛂 Requisitos de visto (Sherpa)</h1>
+  <p class="muted" style="max-width:52rem;line-height:1.5">
+    Integração com a <strong>Sherpa</strong> para requisitos de entrada e produtos eVisa.
+    Espelha o padrão de Voos tempo real (Duffel): chave no painel ou variável de ambiente.
+    <strong>Não invente chaves</strong> — deixe vazio até ter acesso oficial.
+  </p>
+
+  <div class="flash {% if ready %}success{% else %}warning{% endif %}" style="margin:1rem 0">
+    {{ status_msg }}
+  </div>
+
+  <h2 style="font-size:1.1rem;margin-top:1.5rem">1) Obter chave Sherpa</h2>
+  <ol style="line-height:1.55;color:#334;max-width:40rem">
+    <li>Contacte a Sherpa / joinsherpa.io para acesso API (Products + Requirements)</li>
+    <li>Receba a API key (header <code>x-api-key</code>)</li>
+    <li>Escolha ambiente <strong>sandbox</strong> ou <strong>live</strong></li>
+    <li>Cole abaixo → <strong>Guardar</strong> → <strong>Testar ligação</strong></li>
+  </ol>
+  <p class="muted" style="line-height:1.45;max-width:40rem">
+    Docs: <a href="https://docs.joinsherpa.io/" target="_blank" rel="noopener">docs.joinsherpa.io</a>.
+    Products: <code>api.joinsherpa.io</code> / sandbox <code>api-sandbox.joinsherpa.io</code>.
+    Requirements: <code>requirements-api…/v3/trips</code>.
+  </p>
+
+  <form method="post" class="admin-form" style="margin-top:1.25rem;max-width:36rem">
+    <div class="form-group">
+      <label>Sherpa API Key *</label>
+      <input name="sherpa_api_key" type="password" value=""
+             autocomplete="new-password"
+             placeholder="{% if cfg.sherpa_api_key %}•••••••• (deixe vazio para manter){% else %}Cole a chave Sherpa…{% endif %}">
+    </div>
+    <div class="form-group">
+      <label>Ambiente</label>
+      <select name="sherpa_env">
+        <option value="sandbox" {% if cfg.sherpa_env != 'live' %}selected{% endif %}>sandbox</option>
+        <option value="live" {% if cfg.sherpa_env == 'live' %}selected{% endif %}>live</option>
+      </select>
+    </div>
+    <div class="form-group" style="background:#f9f0f4;padding:0.85rem 1rem;border-left:3px solid #5c0a2c">
+      <label for="agency_markup_percent"><strong>Margem da agência (%)</strong></label>
+      <input id="agency_markup_percent" name="agency_markup_percent" type="number"
+             min="0" max="100" step="0.1"
+             value="{{ cfg.agency_markup_percent if cfg.agency_markup_percent is not none else 5 }}">
+      <p class="muted" style="margin:0.45rem 0 0;font-size:0.86rem;line-height:1.45">
+        Percentagem adicionada ao preço do produto eVisa Sherpa.
+      </p>
+    </div>
+    <div class="page-actions" style="border:none;padding-top:0.5rem">
+      <button class="btn btn-primary" type="submit" name="action" value="save">Guardar</button>
+      <button class="btn btn-ghost" type="submit" name="action" value="test">Testar ligação</button>
+      <a class="btn btn-ghost" href="{{ url_for('admin_vistos') }}">Pedidos de visto</a>
+    </div>
+  </form>
+
+  {% if test_result %}
+  <div class="flash {{ 'success' if test_ok else 'error' }}" style="margin-top:1rem">
+    {{ test_result }}
+  </div>
+  {% endif %}
+
+  <p class="muted" style="margin-top:1.5rem;font-size:0.88rem;line-height:1.45">
+    Variáveis de ambiente: <code>SHERPA_API_KEY</code>, <code>SHERPA_ENV</code>=sandbox|live
+  </p>
+</div>
+{% endblock %}
